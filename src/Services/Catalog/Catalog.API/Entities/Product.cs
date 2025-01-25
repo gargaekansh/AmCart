@@ -25,7 +25,7 @@ namespace Catalog.API.Entities
 
         [BsonId] // Indicates that this property is the unique identifier (_id)
         //[BsonRepresentation(BsonType.ObjectId)] // Allows ObjectId to be stored as a string
-        public string Id { get; set; } //= ObjectId.GenerateNewId().ToString();
+        public int Id { get; set; } //= ObjectId.GenerateNewId().ToString();
 
         [BsonElement("name")] // Maps to the "title" field in MongoDB
         public string Name { get; set; }

@@ -39,7 +39,7 @@ namespace Catalog.API.Data
     {
         new Product
         {
-            Id = "1",
+            Id = 1,
             Name = "Fjallraven - Foldsack No. 1 Backpack, Fits 15 Laptops",
             Price = 109.95m,
             Description = "Your perfect pack for everyday use and walks in the forest. Stash your laptop (up to 15 inches) in the padded sleeve, your everyday",
@@ -53,7 +53,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "2",
+            Id = 2,
             Name = "Mens Casual Premium Slim Fit T-Shirts",
             Price = 22.3m,
             Description = "Slim-fitting style, contrast raglan long sleeve, three-button henley placket, light weight & soft fabric for breathable and comfortable wearing. And Solid stitched shirts with round neck made for durability and a great fit for casual fashion wear and diehard baseball fans. The Henley style round neckline includes a three-button placket.",
@@ -67,7 +67,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "3",
+            Id = 3,
             Name = "Mens Cotton Jacket",
             Price = 55.99m,
             Description = "Great outerwear jackets for Spring/Autumn/Winter, suitable for many occasions, such as working, hiking, camping, mountain/rock climbing, cycling, traveling or other outdoors. Good gift choice for you or your family member. A warm hearted love to Father, husband or son in this thanksgiving or Christmas Day.",
@@ -81,7 +81,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "4",
+            Id = 4,
             Name = "Mens Casual Slim Fit",
             Price = 15.99m,
             Description = "The color could be slightly different between on the screen and in practice. / Please note that body builds vary by person, therefore, detailed size information should be reviewed below on the product description.",
@@ -95,7 +95,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "5",
+            Id = 5,
             Name = "John Hardy Women's Legends Naga Gold & Silver Dragon Station Chain Bracelet",
             Price = 695m,
             Description = "From our Legends Collection, the Naga was inspired by the mythical water dragon that protects the ocean's pearl. Wear facing inward to be bestowed with love and abundance, or outward for protection.",
@@ -109,7 +109,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "6",
+            Id = 6,
             Name = "Solid Gold Petite Micropave",
             Price = 168m,
             Description = "Satisfaction Guaranteed. Return or exchange any order within 30 days. Designed and sold by Hafeez Center in the United States. Satisfaction Guaranteed. Return or exchange any order within 30 days.",
@@ -123,7 +123,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "7",
+            Id = 7,
             Name = "White Gold Plated Princess",
             Price = 9.99m,
             Description = "Classic Created Wedding Engagement Solitaire Diamond Promise Ring for Her. Gifts to spoil your love more for Engagement, Wedding, Anniversary, Valentine's Day...",
@@ -137,7 +137,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "8",
+            Id = 8,
             Name = "Pierced Owl Rose Gold Plated Stainless Steel Double",
             Price = 10.99m,
             Description = "Rose Gold Plated Double Flared Tunnel Plug Earrings. Made of 316L Stainless Steel.",
@@ -151,7 +151,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "9",
+            Id = 9,
             Name = "WD 2TB Elements Portable External Hard Drive - USB 3.0",
             Price = 64m,
             Description = "USB 3.0 and USB 2.0 Compatibility Fast data transfers Improve PC Performance High Capacity; Compatibility Formatted NTFS for Windows 10, Windows 8.1, Windows 7; Reformatting may be required for other operating systems; Compatibility may vary depending on user’s hardware configuration and operating system",
@@ -165,7 +165,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "10",
+            Id = 10,
             Name = "SanDisk SSD PLUS 1TB Internal SSD - SATA III 6 Gb/s",
             Price = 109m,
             Description = "Easy upgrade for faster boot up, shutdown, application load and response (As compared to 5400 RPM SATA 2.5” hard drive; Based on published specifications and internal benchmarking tests using PCMark vantage scores) Boosts burst write performance, making it ideal for typical PC workloads The perfect balance of performance and reliability Read/write speeds of up to 535MB/s/450MB/s (Based on internal testing; Performance may vary depending upon drive capacity, host device, OS and application.)",
@@ -179,7 +179,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "11",
+            Id = 11,
             Name = "Silicon Power 256GB SSD 3D NAND A55 SLC Cache Performance Boost SATA III 2.5",
             Price = 109m,
             Description = "3D NAND flash are applied to deliver high transfer speeds Remarkable transfer speeds that enable faster bootup and improved overall system performance. The advanced SLC Cache Technology allows performance boost and longer lifespan 7mm slim design suitable for Ultrabooks and Ultra-slim notebooks. Supports TRIM command, Garbage Collection technology, RAID, and ECC (Error Checking & Correction) to provide the optimized performance and enhanced reliability.",
@@ -193,7 +193,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "12",
+            Id = 12,
             Name = "WD 4TB Gaming Drive Works with Playstation 4 Portable External Hard Drive",
             Price = 114m,
             Description = "Expand your PS4 gaming experience, Play anywhere Fast and easy, setup Sleek design with high capacity, 3-year manufacturer's limited warranty",
@@ -207,7 +207,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "13",
+            Id = 13,
             Name = "Acer SB220Q bi 21.5 inches Full HD (1920 x 1080) IPS Ultra-Thin",
             Price = 599m,
             Description = "21. 5 inches Full HD (1920 x 1080) widescreen IPS display And Radeon free Sync technology. No compatibility for VESA Mount Refresh Rate: 75Hz - Using HDMI port Zero-frame design | ultra-thin | 4ms response time | IPS panel Aspect ratio - 16: 9. Color Supported - 16. 7 million colors. Brightness - 250 nit Tilt angle -5 degree to 15 degree. Horizontal viewing angle-178 degree. Vertical viewing angle-178 degree 75 hertz",
@@ -221,7 +221,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "14",
+            Id = 14,
             Name = "Samsung 49-Inch CHG90 32:9 Curved Gaming Monitor",
             Price = 999.99m,
             Description = "49-Inch Dual QHD (5120x1440) Super ultra-wide curved screen 144Hz refresh rate. 1ms response time HDR support. Customizable RGB lighting, Amazon exclusive - up to 32% off! Best for gaming, work & entertainment.",
@@ -235,7 +235,7 @@ namespace Catalog.API.Data
         },
         new Product
         {
-            Id = "15",
+            Id = 15,
             Name = "Great Value 3-Pack Black Ballpoint Pens",
             Price = 4.99m,
             Description = "Perfect for everyday use, these black ballpoint pens provide a smooth writing experience.",

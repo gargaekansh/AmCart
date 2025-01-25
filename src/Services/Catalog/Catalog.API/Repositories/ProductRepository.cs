@@ -21,7 +21,7 @@ namespace Catalog.API.Repositories
         {
             return await _context.Products.Find(p => true).ToListAsync();
         }
-        public async Task<Product> GetProduct(string id)
+        public async Task<Product> GetProduct(int id)
         {
             return await _context.Products.Find(p => p.Id == id).FirstOrDefaultAsync();
         }
@@ -58,7 +58,7 @@ namespace Catalog.API.Repositories
             var updateResult = await _context.Products.ReplaceOneAsync(filter: g => g.Id == product.Id, replacement: product);
             return updateResult.IsAcknowledged && updateResult.ModifiedCount > 0;
         }
-        public async Task<bool> DeleteProduct(string id)
+        public async Task<bool> DeleteProduct(int id)
         {
             FilterDefinition<Product> filter = Builders<Product>.Filter.Eq(p => p.Id, id);
             DeleteResult deleteResult = await _context.Products.DeleteOneAsync(filter);
