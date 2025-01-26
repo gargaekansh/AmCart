@@ -1,56 +1,58 @@
 version: '3.4'
 
 services:
-  catalogdb:
+  catalogdb1:
     image: mongo
 
-  basketdb:
-    image: redis:alpine
+  # basketdb:
+  #   image: redis:alpine
 
-  discountdb:
-    image: postgres
+  # discountdb:
+  #   image: postgres
 
-  orderdb:
-    image: mcr.microsoft.com/mssql/server:2017-latest
+  # orderdb:
+  #   image: mcr.microsoft.com/mssql/server:2017-latest
 
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
+  # rabbitmq:
+  #   image: rabbitmq:3-management-alpine
 
-  catalog.api:
-    image: ${DOCKER_REGISTRY-}catalogapi
+  amcart.catalog.api:
+    image: ${DOCKER_REGISTRY-}amcart.catalog.api
     build:
       context: .
+      # dockerfile: Services/Catalog/Catalog.API/Dockerfile
       dockerfile: Services/Catalog/Catalog.API/Dockerfile
+      # dockerfile: C:\D\AmCart\src\Services\Catalog\Catalog.API
 
-  basket.api:
-    image: ${DOCKER_REGISTRY-}basketapi
-    build:
-      context: .
-      dockerfile: Services/Basket/Basket.API/Dockerfile
+  # basket.api:
+  #   image: ${DOCKER_REGISTRY-}basketapi
+  #   build:
+  #     context: .
+  #     dockerfile: Services/Basket/Basket.API/Dockerfile
 
-  discount.grpc:
-    image: ${DOCKER_REGISTRY-}discountgrpc
-    build:
-      context: .
-      dockerfile: Services/Discount/Discount.gRPC/Dockerfile
+  # discount.grpc:
+  #   image: ${DOCKER_REGISTRY-}discountgrpc
+  #   build:
+  #     context: .
+  #     dockerfile: Services/Discount/Discount.gRPC/Dockerfile
 
-  ordering.api:
-    image: ${DOCKER_REGISTRY-}orderingapi
-    build:
-      context: .
-      dockerfile: Services/Ordering/Ordering.API/Dockerfile
+  # ordering.api:
+  #   image: ${DOCKER_REGISTRY-}orderingapi
+  #   build:
+  #     context: .
+  #     dockerfile: Services/Ordering/Ordering.API/Dockerfile
   
-  ocelotapigateway:
-    image: ${DOCKER_REGISTRY-}ocelotapigateway
-    build:
-      context: .
-      dockerfile: APIGateways/OcelotAPIGateway/Dockerfile
+  # ocelotapigateway:
+  #   image: ${DOCKER_REGISTRY-}ocelotapigateway
+  #   build:
+  #     context: .
+  #     dockerfile: APIGateways/OcelotAPIGateway/Dockerfile
 
-  shopping.aggregator:
-    image: ${DOCKER_REGISTRY-}shoppingaggregator
-    build:
-      context: .
-      dockerfile: APIGateways/Shopping.Aggregator/Dockerfile
+  # shopping.aggregator:
+  #   image: ${DOCKER_REGISTRY-}shoppingaggregator
+  #   build:
+  #     context: .
+  #     dockerfile: APIGateways/Shopping.Aggregator/Dockerfile
   #pgadmin:
   #  image: dpage/pgadmin4
 
@@ -65,10 +67,14 @@ services:
 
 
 volumes:
-  mongo_data:
-  postgres_data:
-  #pgadmin_data:
-  #portainer_data:
+   mongo_data:
+     # mongodb-catalogdb1:
+  #   shared_database:
+  #    driver: local
+
+  # postgres_data:
+  # pgadmin_data:
+  # portainer_data:
 
 
 
