@@ -4,6 +4,20 @@ services:
   catalogdb1:
     image: mongo
 
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.4.3
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=changeme
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - amcart_network
+
   # basketdb:
   #   image: redis:alpine
 
@@ -23,6 +37,22 @@ services:
       # dockerfile: Services/Catalog/Catalog.API/Dockerfile
       dockerfile: Services/Catalog/Catalog.API/Dockerfile
       # dockerfile: C:\D\AmCart\src\Services\Catalog\Catalog.API
+
+  amcart.productsearch.api:
+    image: ${DOCKER_REGISTRY-}amcart.productsearch.api
+    build:
+      context: .
+      dockerfile: Services/ProductSearch/AmCart.ProductSearch.API/Dockerfile
+    environment:
+      - ELASTICSEARCH_URI=http://elasticsearch:9200  # Elasticsearch URI
+      - ELASTICSEARCH_DEFAULT_INDEX=products  # Default index (or set to an index of your choice)
+    ports:
+      - "8002:80"
+    depends_on:
+      - elasticsearch
+    networks:
+      - amcart_network
+    restart: always
 
   # basket.api:
   #   image: ${DOCKER_REGISTRY-}basketapi
@@ -65,9 +95,14 @@ services:
   #portainer:
   #  image: portainer/portainer-ce
 
+networks:
+  amcart_network:
+    driver: bridge
 
 volumes:
    mongo_data:
+   elasticsearch_data:
+    driver: local
      # mongodb-catalogdb1:
   #   shared_database:
   #    driver: local
