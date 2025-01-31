@@ -44,12 +44,15 @@ services:
       context: .
       dockerfile: Services/ProductSearch/AmCart.ProductSearch.API/Dockerfile
     environment:
+      - ASPNETCORE_ENVIRONMENT=Development
       - ELASTICSEARCH_URI=http://elasticsearch:9200  # Elasticsearch URI
       - ELASTICSEARCH_DEFAULT_INDEX=products  # Default index (or set to an index of your choice)
+      - MongoDbConnection=mongodb://catalogdb1:27017"
     ports:
       - "8002:80"
     depends_on:
       - elasticsearch
+      - catalogdb1
     networks:
       - amcart_network
     restart: always

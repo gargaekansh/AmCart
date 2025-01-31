@@ -167,6 +167,8 @@
 using AmCart.ProductSearch.API.Configuration;
 using AmCart.ProductSearch.API.Repositories;
 using AmCart.ProductSearch.API.Repositories.Interfaces;
+using AmCart.ProductSearch.API.Services.Interfaces;
+using AmCart.ProductSearch.API.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -177,13 +179,21 @@ using Nest;
 using Serilog;
 using System;
 using System.Threading;
+using MongoDB.Driver;
+using AmCart.ProductSearch.API.AutoMapper;
 
 var builder = WebApplication.CreateBuilder(args);
+
+//Register AutoMapper
+
+builder.Services.AddAutoMapper(typeof(ProductMappingProfile));
 
 // 🔹 Add services to the container
 builder.Services.AddControllers();
 
 // 🔹 Load configuration from appsettings.json
+// Add MongoDB and Elasticsearch configuration
+builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
 builder.Services.Configure<ElasticSearchSettings>(builder.Configuration.GetSection("ElasticsearchSettings"));
 
 // 🔹 Configure Serilog
@@ -216,6 +226,8 @@ builder.Services.AddSingleton<IElasticClient>(sp =>
 
 // 🔹 Register the ProductSearchRepository
 builder.Services.AddScoped<IProductSearchRepository, ProductSearchRepository>();
+builder.Services.AddScoped<IProductDataSyncService, ProductDataSyncService>();
+
 
 // 🔹 Add Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -236,6 +248,14 @@ var app = builder.Build();
 // 🔹 Ensure Elasticsearch is connected on startup
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 EnsureDatabaseConnections(app.Services, logger);
+
+// Perform product data sync on startup
+using (var scope = app.Services.CreateScope())
+{
+    var syncService = scope.ServiceProvider.GetRequiredService<IProductDataSyncService>();
+    await syncService.SyncProductDataAsync();
+}
+
 
 if (app.Environment.IsDevelopment())
 {
@@ -266,6 +286,13 @@ void EnsureDatabaseConnections(IServiceProvider services, Microsoft.Extensions.L
 
     try
     {
+
+        //// 🔹 MongoDB Connection Check
+        var mongoClient = provider.GetRequiredService<IMongoClient>();
+        mongoClient.ListDatabaseNames();
+        logger.LogInformation("✅ MongoDB connection established successfully.");
+
+
         // 🔹 Elasticsearch Connection Check
         var elasticClient = provider.GetRequiredService<IElasticClient>();
         for (int attempt = 1; attempt <= 5; attempt++)

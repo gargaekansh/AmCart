@@ -7,6 +7,9 @@ namespace AmCart.ProductSearch.API.Entities
         [Text(Name = "id")]
         public string Id { get; set; }
 
+        [Number(Name = "productId")] // Store int ID separately
+        public int ProductId { get; set; }
+
         [Text(Name = "name")]
         public string Name { get; set; }
 
@@ -23,10 +26,10 @@ namespace AmCart.ProductSearch.API.Entities
         public decimal Price { get; set; }
 
         [Object(Name = "rating")]
-        public Rating Rating { get; set; }
+        public ProductSearchRating Rating { get; set; }
     }
 
-    public class Rating
+    public class ProductSearchRating
     {
         [Number(NumberType.Float)]
         public decimal Rate { get; set; }
