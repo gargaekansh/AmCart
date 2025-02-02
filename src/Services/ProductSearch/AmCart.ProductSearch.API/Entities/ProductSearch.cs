@@ -1,5 +1,6 @@
 ﻿using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Mapping;
+using Elastic;
 
 namespace AmCart.ProductSearch.API.Entities
 {

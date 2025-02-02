@@ -1,20 +1,14 @@
-﻿using AmCart.ProductSearch.API.Entities;
-using AmCart.ProductSearch.API.Repositories.Interfaces;
-using Elasticsearch.Net;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Nest;
-using System;
-using System.Threading.Tasks;
+﻿using AmCart.ProductSearch.API.Repositories.Interfaces;
+using Elastic.Clients.Elasticsearch; // Updated namespace for new Elastic client
 
 namespace AmCart.ProductSearch.API.Repositories
 {
     public class ProductSearchRepository : IProductSearchRepository
     {
-        private readonly IElasticClient _elasticClient;
+        private readonly ElasticsearchClient _elasticClient;
         private readonly ILogger<ProductSearchRepository> _logger;
 
-        public ProductSearchRepository(IElasticClient elasticClient, ILogger<ProductSearchRepository> logger)
+        public ProductSearchRepository(ElasticsearchClient elasticClient, ILogger<ProductSearchRepository> logger)
         {
             _elasticClient = elasticClient;
             _logger = logger;
@@ -25,7 +19,7 @@ namespace AmCart.ProductSearch.API.Repositories
         /// </summary>
         /// <param name="product">Product entity</param>
         /// <returns></returns>
-        public async Task InsertOrUpdateProductAsync(AmCart.ProductSearch.API.Entities.ProductSearch product)
+        public async Task InsertOrUpdateProductAsync(Entities.ProductSearch product)
         {
             var response = await _elasticClient.IndexAsync(product, idx => idx
                 .Index("products")
@@ -33,7 +27,7 @@ namespace AmCart.ProductSearch.API.Repositories
                 .Refresh(Refresh.WaitFor) // Ensure the change is visible immediately
             );
 
-            if (!response.IsValid)
+            if (!response.IsValidResponse)
             {
                 _logger.LogError("Failed to insert/update product {ProductId}. Error: {Error}", product.Id, response.DebugInformation);
             }
@@ -61,7 +55,7 @@ namespace AmCart.ProductSearch.API.Repositories
                 .IndexMany(products)
             );
 
-            if (!bulkResponse.IsValid)
+            if (!bulkResponse.IsValidResponse)
             {
                 _logger.LogError("Bulk insert failed. Errors: {Errors}", bulkResponse.DebugInformation);
                 return false;
@@ -70,7 +64,6 @@ namespace AmCart.ProductSearch.API.Repositories
             _logger.LogInformation("Successfully inserted {Count} products into Elasticsearch.", products.Count());
             return true;
         }
-
 
         /// <summary>
         /// Delete a product from Elasticsearch.
@@ -84,7 +77,7 @@ namespace AmCart.ProductSearch.API.Repositories
                 .Refresh(Refresh.WaitFor) // Ensure deletion is immediately visible
             );
 
-            if (!response.IsValid)
+            if (!response.IsValidResponse)
             {
                 _logger.LogError("Failed to delete product {ProductId}. Error: {Error}", productId, response.DebugInformation);
             }
@@ -99,7 +92,7 @@ namespace AmCart.ProductSearch.API.Repositories
         /// </summary>
         /// <param name="query">Search query</param>
         /// <returns>Search results</returns>
-        public async Task<ISearchResponse<AmCart.ProductSearch.API.Entities.ProductSearch>> SearchAsync(string query)
+        public async Task<Elastic.Clients.Elasticsearch.ISearchResponse<AmCart.ProductSearch.API.Entities.ProductSearch>> SearchAsync(string query)
         {
             if (string.IsNullOrWhiteSpace(query))
             {
@@ -123,8 +116,8 @@ namespace AmCart.ProductSearch.API.Repositories
                                     .Field(p => p.Description)
                                 )
                                 .Query(query)
-                                .Type(TextQueryType.BestFields)
-                                .Fuzziness(Fuzziness.Auto)
+                                .Type(Elastic.Clients.Elasticsearch.TextQueryType.BestFields)
+                                .Fuzziness(Elastic.Clients.Elasticsearch.Fuzziness.Auto)
                                 .PrefixLength(2)
                                 .Boost(2.0) // Boosting the entire full-text search
                             ),
@@ -144,7 +137,7 @@ namespace AmCart.ProductSearch.API.Repositories
                     )
                 )
                 .Sort(s => s
-                    .Descending(SortSpecialField.Score) // Prioritize high-relevance results
+                    .Descending(Elastic.Clients.Elasticsearch.SortSpecialField.Score) // Prioritize high-relevance results
                 )
                 .Size(50) // Limits results to 50 for performance
             );
@@ -156,7 +149,5 @@ namespace AmCart.ProductSearch.API.Repositories
 
             return searchResponse;
         }
-
-
     }
 }

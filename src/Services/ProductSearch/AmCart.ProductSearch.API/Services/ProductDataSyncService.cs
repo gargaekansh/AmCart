@@ -1,27 +1,20 @@
-﻿
-
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Microsoft.Extensions.Logging;
-    using MongoDB.Driver;
-    using Nest;
-    using AmCart.ProductSearch.API.Entities;
-    using AmCart.ProductSearch.API.Services.Interfaces;
-    using AutoMapper;
+﻿using MongoDB.Driver;
+using AmCart.ProductSearch.API.Entities;
+using AmCart.ProductSearch.API.Services.Interfaces;
+using AutoMapper;
 using AmCart.ProductSearch.API.Configuration;
 using Microsoft.Extensions.Options;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.Core.Bulk;
 
-    namespace AmCart.ProductSearch.API.Services
-    {
+namespace AmCart.ProductSearch.API.Services
+{
     /// <summary>
     /// Service for syncing product data from MongoDB to Elasticsearch.
     /// </summary>
     public class ProductDataSyncService : IProductDataSyncService
     {
-        private readonly IElasticClient _elasticClient;
+        private readonly ElasticsearchClient _elasticClient;
         private readonly IMongoCollection<Product> _productCollection;
         private readonly ILogger<ProductDataSyncService> _logger;
         private readonly IMapper _mapper;
@@ -38,7 +31,7 @@ using Microsoft.Extensions.Options;
         /// <param name="logger">Logger instance for logging.</param>
         /// <param name="mapper">AutoMapper instance for entity mapping.</param>
         public ProductDataSyncService(
-            IElasticClient elasticClient,
+            ElasticsearchClient elasticClient,
             IMongoClient mongoClient,
             IOptions<MongoDbSettings> mongoSettings,
             ILogger<ProductDataSyncService> logger,
@@ -195,7 +188,7 @@ using Microsoft.Extensions.Options;
             // Perform the bulk indexing
             var bulkResponse = await _elasticClient.BulkAsync(bulkRequest);
 
-            if (!bulkResponse.IsValid)
+            if (!bulkResponse.IsValidResponse)
             {
                 _logger.LogError($"❌ Elasticsearch bulk index error: {bulkResponse.DebugInformation}");
                 return false;
