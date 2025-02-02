@@ -1,345 +1,174 @@
-﻿//using AmCart.ProductSearch.API.Configuration;
-//using AmCart.ProductSearch.API.Repositories.Interfaces;
-//using AmCart.ProductSearch.API.Repositories;
-//using Microsoft.AspNetCore.HttpLogging;
-//using Microsoft.Extensions.Options;
-//using Nest;
-//using Microsoft.AspNetCore.Builder;
-//using Microsoft.Extensions.DependencyInjection;
-//using Microsoft.OpenApi.Models;
-
-////var builder = WebApplication.CreateBuilder(args);
-
-////// Add services to the container
-////builder.Services.AddControllers();
-////builder.Services.AddEndpointsApiExplorer();
-////builder.Services.AddSwaggerGen(options =>
-////{
-////    options.SwaggerDoc("v1", new OpenApiInfo
-////    {
-////        Title = "Product Search API",
-////        Version = "v1",
-////        Description = "API for searching products using Elasticsearch"
-////    });
-////});
-
-////var app = builder.Build();
-
-////// Enable Swagger only in Development or based on a setting
-////if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("EnableSwaggerInProduction"))
-////{
-////    app.UseSwagger();
-////    app.UseSwaggerUI(options =>
-////    {
-////        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Search API v1");
-////        options.RoutePrefix = string.Empty; // Swagger is available at the root URL
-////    });
-////}
-
-////// Enable essential middlewares
-////app.UseHttpsRedirection();
-////app.UseAuthorization();
-////app.MapControllers();
-////app.Run();
-
-//var builder = WebApplication.CreateBuilder(args);
-
-//// Load configuration
-//builder.Services.Configure<ElasticSearchSettings>(builder.Configuration.GetSection("Elasticsearch"));
-
-//// Add services to the container
-//builder.Services.AddControllers();
-//builder.Services.AddEndpointsApiExplorer();
-
-//// Configure Swagger with custom API information
-//builder.Services.AddSwaggerGen(options =>
-//{
-//    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-//    {
-//        Title = "Product Search API",
-//        Version = "v1",
-//        Description = "API for searching products using Elasticsearch",
-//        Contact = new Microsoft.OpenApi.Models.OpenApiContact
-//        {
-//            Name = "Support",
-//            Email = "support@example.com",
-//            Url = new Uri("https://example.com")
-//        }
-//    });
-
-//    // Include XML comments (requires XML documentation enabled in project settings)
-//    var xmlFilename = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-//    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
-//    if (File.Exists(xmlPath))
-//    {
-//        options.IncludeXmlComments(xmlPath);
-//    }
-//});
-
-//// Register the ProductSearchRepository
-//builder.Services.AddScoped<IProductSearchRepository, ProductSearchRepository>();
-
-//// Register IElasticClient as Singleton
-//builder.Services.AddSingleton<IElasticClient>(sp =>
-//{
-//    var elasticSettings = sp.GetRequiredService<IOptions<ElasticSearchSettings>>().Value;
-
-//    var connectionSettings = new ConnectionSettings(new Uri(elasticSettings.Uri))
-//                             .DefaultIndex(elasticSettings.DefaultIndex);
-
-//    // Initialize IElasticClient
-//    var elasticClient = new ElasticClient(connectionSettings);
-
-//    // Optionally: Test the connection on startup
-//    if (!elasticClient.Ping().IsValid)
-//    {
-//        throw new InvalidOperationException("Unable to connect to Elasticsearch.");
-//    }
-
-//    return elasticClient;
-//});
-
-//// Add logging
-//builder.Services.AddHttpLogging(logging =>
-//{
-//    logging.LoggingFields = HttpLoggingFields.All;
-//});
-
-//// Configure CORS (Optional)
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("AllowAll", policy =>
-//        policy.AllowAnyOrigin()
-//              .AllowAnyMethod()
-//              .AllowAnyHeader());
-//});
-
-//var app = builder.Build();
-
-//// Configure the HTTP request pipeline
-//if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("EnableSwaggerInProduction"))
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI(options =>
-//    {
-//        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Search API v1");
-//        options.RoutePrefix = string.Empty; // Makes Swagger available at root URL
-//    });
-//}
-
-//// Enable HTTP Logging
-//app.UseHttpLogging();
-
-//// Enable CORS
-//app.UseCors("AllowAll");
-
-//app.UseHttpsRedirection();
-//app.UseAuthorization();
-//app.MapControllers();
-
-//app.Run();
-
-
-//public void EnsureElasticsearchConnection(IElasticClient elasticClient, ILogger logger, int maxRetries = 5, int delayMilliseconds = 2000)
-//{
-//    for (int attempt = 1; attempt <= maxRetries; attempt++)
-//    {
-//        var pingResponse = elasticClient.Ping();
-
-//        if (pingResponse.IsValid)
-//        {
-//            logger.LogInformation("Successfully connected to Elasticsearch on attempt {Attempt}.", attempt);
-//            return; // Exit method if connection is successful
-//        }
-
-//        logger.LogWarning("Elasticsearch connection failed on attempt {Attempt}/{MaxRetries}. Error: {ErrorMessage}",
-//                          attempt, maxRetries, pingResponse.OriginalException?.Message ?? "Unknown error");
-
-//        if (attempt < maxRetries)
-//        {
-//            Thread.Sleep(delayMilliseconds); // Wait before retrying
-//        }
-//    }
-
-//    logger.LogError("Unable to connect to Elasticsearch after {MaxRetries} attempts.", maxRetries);
-//}
-
-using AmCart.ProductSearch.API.Configuration;
+﻿using AmCart.ProductSearch.API.Configuration;
 using AmCart.ProductSearch.API.Repositories;
 using AmCart.ProductSearch.API.Repositories.Interfaces;
 using AmCart.ProductSearch.API.Services.Interfaces;
 using AmCart.ProductSearch.API.Services;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
 using Serilog;
-using System;
-using System.Threading;
 using MongoDB.Driver;
 using AmCart.ProductSearch.API.AutoMapper;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Transport;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//Register AutoMapper
+// 🔹 Configure Logging (Serilog)
+ConfigureLogging();
 
+// 🔹 Register AutoMapper for Product Mapping
 builder.Services.AddAutoMapper(typeof(ProductMappingProfile));
 
-// 🔹 Add services to the container
+// 🔹 Add services to the container (Controllers)
 builder.Services.AddControllers();
 
 // 🔹 Load configuration from appsettings.json
-// Add MongoDB and Elasticsearch configuration
+// Register MongoDB and Elasticsearch settings from configuration
 builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
 builder.Services.Configure<ElasticSearchSettings>(builder.Configuration.GetSection("ElasticsearchSettings"));
 
-// 🔹 Configure Serilog
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()  // Logs to console
-    .WriteTo.Debug()    // Logs to debug output
-                        // 🔹 Rolling file configuration
-    .WriteTo.File(
-        path: @"AmCart.ProductSearch.API-.log",              // Path for log files
-        rollingInterval: RollingInterval.Day,  // Create a new log file every day
-        fileSizeLimitBytes: 10_000_000,       // Max size of log files (10 MB)
-        rollOnFileSizeLimit: true,            // Start a new file when size is exceeded
-        retainedFileCountLimit: 7,            // Keep 7 days worth of logs
-        encoding: System.Text.Encoding.UTF8  // Use UTF-8 encoding
-    )
-    .MinimumLevel.Debug()
-    .CreateLogger();
-
-// Integrate Serilog into ASP.NET Core's logging system
-builder.Logging.AddSerilog();
-
-// MongoDB Configuration
-// Register MongoDB Client
+// 🔹 Register MongoDB Client as a Singleton
 builder.Services.AddSingleton<IMongoClient>(sp =>
-{ 
+{
     var settings = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
-    return new MongoClient(settings.ConnectionString);
+    return new MongoClient(settings.ConnectionString);  // Returns an instance of MongoClient using the connection string from settings
 });
 
-
-/// <summary>
-/// Registers the Elasticsearch client as a singleton in the service container.
-/// </summary>
-/// <param name="services">The service collection.</param>
-builder.Services.AddSingleton<ElasticClient>(sp =>
+// 🔹 Register Elasticsearch Client as a Singleton
+builder.Services.AddSingleton<ElasticsearchClient>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<ElasticSearchSettings>>().Value;
 
-    // Set up the connection settings with basic authentication
+    // Set up connection settings for Elasticsearch, including authentication and timeout
     var connectionSettings = new ElasticsearchClientSettings(new Uri(settings.Uri))
         .DefaultIndex(settings.DefaultIndex)  // Set default index
-        //.Authenticate(settings.Username, settings.Password)  // Use Authenticate for basic authentication
-         .Authentication(new BasicAuthentication(settings.Username, settings.Password))
-        .EnableDebugMode()  // Optional: Enables verbose logging for debugging
+        .Authentication(new BasicAuthentication(settings.Username, settings.Password))  // Use basic authentication with username and password
+        .EnableDebugMode()  // Optional: Enable verbose logging for debugging
         .DisablePing()  // Optional: Disable ping (disable version check)
-        .ServerCertificateValidationCallback((o, certificate, chain, errors) => true)  // Ignore SSL issues
-         .RequestTimeout(TimeSpan.FromMinutes(2))
-        .ThrowExceptions();  // Throw exceptions for any errors
+        .ServerCertificateValidationCallback((o, certificate, chain, errors) => true)  // Ignore SSL certificate validation (use cautiously in production)
+        .RequestTimeout(TimeSpan.FromMinutes(2))  // Set request timeout to 2 minutes
+        .ThrowExceptions();  // Ensure exceptions are thrown on errors, preventing silent failures
 
-    return new ElasticClient(connectionSettings);
+    return new ElasticsearchClient(connectionSettings);
 });
 
-// 🔹 Register the ProductSearchRepository
+// 🔹 Register Repositories and Services
 builder.Services.AddScoped<IProductSearchRepository, ProductSearchRepository>();
 builder.Services.AddScoped<IProductDataSyncService, ProductDataSyncService>();
 
-
-// 🔹 Add Swagger
+// 🔹 Add Swagger to API Documentation
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 🔹 Add CORS policy
+// 🔹 Configure CORS policy (Allow all origins, methods, and headers)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
-        policy => policy
-            .AllowAnyOrigin()   // Allow all origins (use more restrictive policies in production)
-            .AllowAnyMethod()   // Allow any HTTP method
-            .AllowAnyHeader()); // Allow any HTTP header
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());  // Allow all origins and HTTP methods for cross-origin requests
 });
 
 var app = builder.Build();
 
-// 🔹 Ensure Elasticsearch is connected on startup
+// 🔹 Ensure Database Connections (MongoDB and Elasticsearch) are Established at Startup
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
-EnsureDatabaseConnections(app.Services, logger);
+await EnsureDatabaseConnectionsAsync(app.Services, logger);
 
-/// <summary>
-/// Performs product data synchronization during application startup.
-/// </summary>
+// 🔹 Perform Product Data Synchronization during Application Startup
 using (var scope = app.Services.CreateScope())
 {
     var syncService = scope.ServiceProvider.GetRequiredService<IProductDataSyncService>();
-    await syncService.SyncProductDataAsync();
+    await syncService.SyncProductDataAsync();  // Sync product data on application startup
 }
 
-
+// 🔹 Configure Middleware
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
+    app.UseSwagger();  // Enable Swagger for API documentation in development environment
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Search API v1");
-        options.RoutePrefix = string.Empty; // Makes Swagger available at root URL
+        options.RoutePrefix = string.Empty;  // Makes Swagger UI available at root URL
     });
 }
 
-// Apply the CORS middleware
-app.UseCors("AllowAll");  // Use the CORS policy defined above
+// 🔹 Apply CORS Middleware (Use defined policy)
+app.UseCors("AllowAll");
 
-// Configure middleware
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
+app.UseHttpsRedirection();  // Redirect HTTP to HTTPS
+app.UseAuthorization();  // Ensure authorization middleware is applied
+app.MapControllers();  // Map controllers to the request pipeline
 
+// 🔹 Health Check Endpoint (Basic route to check if API is live)
 app.MapGet("/", () => Results.Ok("Product Search API is running 🚀"));
 
-app.Run();
-
+app.Run();  // Run the application
 
 /// <summary>
-/// Ensures that the necessary database connections (MongoDB and Elasticsearch) are established during application startup.
+/// Configures Serilog for logging.
 /// </summary>
-/// <param name="services">The service provider.</param>
-/// <param name="logger">The logger for logging connection status.</param>
-void EnsureDatabaseConnections(IServiceProvider services, Microsoft.Extensions.Logging.ILogger logger)
+void ConfigureLogging()
+{
+    Log.Logger = new LoggerConfiguration()
+        .WriteTo.Console()  // Log to console
+        .WriteTo.Debug()    // Log to debug output
+        .WriteTo.File(
+            path: @"AmCart.ProductSearch.API-.log",  // Log file path
+            rollingInterval: RollingInterval.Day,  // Create a new log file every day
+            fileSizeLimitBytes: 10_000_000,  // Max log file size (10 MB)
+            rollOnFileSizeLimit: true,  // Roll over the log file if size is exceeded
+            retainedFileCountLimit: 7,  // Retain 7 days' worth of logs
+            encoding: System.Text.Encoding.UTF8  // Use UTF-8 encoding for log files
+        )
+        .MinimumLevel.Debug()  // Minimum log level (Debug and above)
+        .CreateLogger();  // Create the logger instance
+
+    builder.Logging.ClearProviders();  // Clear default logging providers to use Serilog
+    builder.Logging.AddSerilog();  // Add Serilog to ASP.NET Core logging
+}
+
+/// <summary>
+/// Ensures that MongoDB and Elasticsearch connections are established at application startup.
+/// </summary>
+/// <param name="services">The service provider for dependency injection.</param>
+/// <param name="logger">The logger instance for logging connection status.</param>
+async Task EnsureDatabaseConnectionsAsync(IServiceProvider services, Microsoft.Extensions.Logging.ILogger logger)
 {
     using var scope = services.CreateScope();
     var provider = scope.ServiceProvider;
 
     try
     {
-        // Ensure MongoDB connection
+        // ✅ Ensure MongoDB connection
         var mongoClient = provider.GetRequiredService<IMongoClient>();
-        mongoClient.ListDatabaseNames();
+        await mongoClient.ListDatabaseNamesAsync();  // Ensure MongoDB connection is successful by listing database names asynchronously
         logger.LogInformation("✅ MongoDB connection established successfully.");
 
-        // Ensure Elasticsearch connection and mappings
-        var elasticClient = provider.GetRequiredService<ElasticClient>();
+        // ✅ Ensure Elasticsearch connection with retry logic (up to 5 attempts)
+        var elasticClient = provider.GetRequiredService<ElasticsearchClient>();
+
         for (int attempt = 1; attempt <= 5; attempt++)
         {
-            var pingResponse = elasticClient.Ping();
-            if (pingResponse.IsValid)
+            try
             {
-                logger.LogInformation("✅ Elasticsearch connected on attempt {Attempt}.", attempt);
-                // Create index and mappings for ProductSearch
-                ElasticsearchMappings.CreateProductSearchIndexAsync(elasticClient).Wait();
-                return;
+                var pingResponse = await elasticClient.PingAsync();  // Ping Elasticsearch to check connection
+                if (pingResponse.IsSuccess())
+                {
+                    logger.LogInformation("✅ Elasticsearch connected on attempt {Attempt}.", attempt);
+
+                    // ✅ Ensure index and mappings for ProductSearch
+                    await ElasticsearchMappings.CreateProductSearchIndexAsync(elasticClient);
+                    return;
+                }
+
+                logger.LogWarning("⚠️ Elasticsearch connection failed (Attempt {Attempt}/5): {ErrorMessage}",
+                    attempt, pingResponse.ElasticsearchServerError?.Error?.Reason ?? "Unknown error");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("⚠️ Elasticsearch attempt {Attempt}/5 failed: {ErrorMessage}", attempt, ex.Message);
             }
 
-            logger.LogWarning("⚠️ Elasticsearch connection failed (Attempt {Attempt}/5): {ErrorMessage}",
-                              attempt, pingResponse.OriginalException?.Message ?? "Unknown error");
-
-            Thread.Sleep(2000); // Retry delay
+            await Task.Delay(2000);  // Retry after 2 seconds
         }
 
         logger.LogError("❌ Failed to connect to Elasticsearch after multiple attempts.");
@@ -349,6 +178,9 @@ void EnsureDatabaseConnections(IServiceProvider services, Microsoft.Extensions.L
         logger.LogError(ex, "❌ Error during service initialization.");
     }
 }
+
+
+
 
 
 //void EnsureDatabaseConnections(IServiceProvider services, Microsoft.Extensions.Logging.ILogger logger)

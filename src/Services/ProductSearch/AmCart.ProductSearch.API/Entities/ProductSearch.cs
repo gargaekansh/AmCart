@@ -77,6 +77,8 @@ namespace AmCart.ProductSearch.API.Entities
 /// <param name="client">The Elasticsearch client instance.</param>
 /// <param name="indexName">The name of the Elasticsearch index.</param>
 /// <returns>A task representing the asynchronous operation.</returns>
+/// 
+
 public static class ElasticsearchMappings
 {
     public static async Task CreateProductSearchIndexAsync(ElasticsearchClient client, string indexName = "products")
@@ -84,7 +86,7 @@ public static class ElasticsearchMappings
         var existsResponse = await client.Indices.ExistsAsync(indexName);
         if (existsResponse.Exists)
         {
-            return; // Index already exists, so no need to create it again
+            return; // Index already exists
         }
 
         var createIndexRequest = new CreateIndexRequest(indexName)
@@ -93,32 +95,90 @@ public static class ElasticsearchMappings
             {
                 Properties = new Properties
                 {
-                    { "id", new KeywordProperty() },
-                    { "productId", new IntegerNumberProperty() },
-                    { "name", new TextProperty() },
-                    { "category", new TextProperty() },
-                    { "description", new TextProperty() },
-                    { "image", new KeywordProperty() },
-                    { "price", new FloatNumberProperty() },
-                    { "rating", new ObjectProperty
-                        {
-                            Properties = new Properties
-                            {
-                                { "rate", new FloatNumberProperty() },
-                                { "count", new IntegerNumberProperty() }
-                            }
+                    { "id", new KeywordProperty() }, // Good for ID
+                    { "productId", new IntegerNumberProperty() }, // Good for integer IDs
+                    { "name", new TextProperty() { // Use TextProperty for full-text search
+                        Analyzer = "standard", // Or a custom analyzer if needed
+                        Fields = new Properties { // Add a keyword sub-field for sorting/filtering
+                            { "keyword", new KeywordProperty() }
                         }
-                    }
+                    } },
+                    { "category", new TextProperty() { // Use TextProperty
+                        Analyzer = "standard",
+                        Fields = new Properties {
+                            { "keyword", new KeywordProperty() }
+                        }
+                    } },
+                    { "description", new TextProperty() { // Use TextProperty
+                        Analyzer = "standard"
+                    } },
+                    { "image", new KeywordProperty() }, // Good for image URLs (exact matching)
+                    { "price", new FloatNumberProperty() }, // Good for prices
+                    { "rating", new ObjectProperty
+                    {
+                        Properties = new Properties
+                        {
+                            { "rate", new FloatNumberProperty() },
+                            { "count", new IntegerNumberProperty() }
+                        }
+                    } }
                 }
             }
         };
-
 
         var createIndexResponse = await client.Indices.CreateAsync(createIndexRequest);
 
         if (!createIndexResponse.IsSuccess())
         {
-            throw new InvalidOperationException($"Failed to create index: {createIndexResponse.ElasticsearchServerError?.Error?.Reason}");
+            throw new Exception($"Failed to create index: {createIndexResponse.ElasticsearchServerError?.Error?.Reason}"); // Simplified exception
         }
     }
 }
+
+
+
+//public static class ElasticsearchMappings
+//{
+//    public static async Task CreateProductSearchIndexAsync(ElasticsearchClient client, string indexName = "products")
+//    {
+//        var existsResponse = await client.Indices.ExistsAsync(indexName);
+//        if (existsResponse.Exists)
+//        {
+//            return; // Index already exists, so no need to create it again
+//        }
+
+//        var createIndexRequest = new CreateIndexRequest(indexName)
+//        {
+//            Mappings = new TypeMapping
+//            {
+//                Properties = new Properties
+//                {
+//                    { "id", new KeywordProperty() },
+//                    { "productId", new IntegerNumberProperty() },
+//                    { "name", new TextProperty() },
+//                    { "category", new TextProperty() },
+//                    { "description", new TextProperty() },
+//                    { "image", new KeywordProperty() },
+//                    { "price", new FloatNumberProperty() },
+//                    { "rating", new ObjectProperty
+//                        {
+//                            Properties = new Properties
+//                            {
+//                                { "rate", new FloatNumberProperty() },
+//                                { "count", new IntegerNumberProperty() }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        };
+
+
+//        var createIndexResponse = await client.Indices.CreateAsync(createIndexRequest);
+
+//        if (!createIndexResponse.IsSuccess())
+//        {
+//            throw new InvalidOperationException($"Failed to create index: {createIndexResponse.ElasticsearchServerError?.Error?.Reason}");
+//        }
+//    }
+//}

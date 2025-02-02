@@ -1,5 +1,7 @@
 ﻿
 
+using Elastic.Clients.Elasticsearch;
+
 namespace AmCart.ProductSearch.API.Repositories.Interfaces
 {
     public interface IProductSearchRepository
@@ -8,6 +10,6 @@ namespace AmCart.ProductSearch.API.Repositories.Interfaces
 
         Task DeleteProductAsync(string productId);
         Task InsertOrUpdateProductAsync(Entities.ProductSearch product);
-        Task<Nest.ISearchResponse<AmCart.ProductSearch.API.Entities.ProductSearch>> SearchAsync(string query);
+        Task<SearchResponse<Entities.ProductSearch>> SearchAsync(string query);
     }
 }
