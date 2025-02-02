@@ -175,12 +175,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Nest;
+
 using Serilog;
 using System;
 using System.Threading;
 using MongoDB.Driver;
 using AmCart.ProductSearch.API.AutoMapper;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Transport;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -202,7 +204,7 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Debug()    // Logs to debug output
                         // 🔹 Rolling file configuration
     .WriteTo.File(
-        path: @"C:\Logs\AmCart.ProductSearch.API-.log",              // Path for log files
+        path: @"AmCart.ProductSearch.API-.log",              // Path for log files
         rollingInterval: RollingInterval.Day,  // Create a new log file every day
         fileSizeLimitBytes: 10_000_000,       // Max size of log files (10 MB)
         rollOnFileSizeLimit: true,            // Start a new file when size is exceeded
@@ -215,12 +217,34 @@ Log.Logger = new LoggerConfiguration()
 // Integrate Serilog into ASP.NET Core's logging system
 builder.Logging.AddSerilog();
 
-// 🔹 Add Elasticsearch Client using ElasticSearchSettings
-builder.Services.AddSingleton<IElasticClient>(sp =>
+// MongoDB Configuration
+// Register MongoDB Client
+builder.Services.AddSingleton<IMongoClient>(sp =>
+{ 
+    var settings = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
+    return new MongoClient(settings.ConnectionString);
+});
+
+
+/// <summary>
+/// Registers the Elasticsearch client as a singleton in the service container.
+/// </summary>
+/// <param name="services">The service collection.</param>
+builder.Services.AddSingleton<ElasticClient>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<ElasticSearchSettings>>().Value;
-    var connectionSettings = new ConnectionSettings(new Uri(settings.Uri))
-                             .DefaultIndex(settings.DefaultIndex); // Use default index from settings
+
+    // Set up the connection settings with basic authentication
+    var connectionSettings = new ElasticsearchClientSettings(new Uri(settings.Uri))
+        .DefaultIndex(settings.DefaultIndex)  // Set default index
+        //.Authenticate(settings.Username, settings.Password)  // Use Authenticate for basic authentication
+         .Authentication(new BasicAuthentication(settings.Username, settings.Password))
+        .EnableDebugMode()  // Optional: Enables verbose logging for debugging
+        .DisablePing()  // Optional: Disable ping (disable version check)
+        .ServerCertificateValidationCallback((o, certificate, chain, errors) => true)  // Ignore SSL issues
+         .RequestTimeout(TimeSpan.FromMinutes(2))
+        .ThrowExceptions();  // Throw exceptions for any errors
+
     return new ElasticClient(connectionSettings);
 });
 
@@ -249,7 +273,9 @@ var app = builder.Build();
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 EnsureDatabaseConnections(app.Services, logger);
 
-// Perform product data sync on startup
+/// <summary>
+/// Performs product data synchronization during application startup.
+/// </summary>
 using (var scope = app.Services.CreateScope())
 {
     var syncService = scope.ServiceProvider.GetRequiredService<IProductDataSyncService>();
@@ -279,6 +305,12 @@ app.MapGet("/", () => Results.Ok("Product Search API is running 🚀"));
 
 app.Run();
 
+
+/// <summary>
+/// Ensures that the necessary database connections (MongoDB and Elasticsearch) are established during application startup.
+/// </summary>
+/// <param name="services">The service provider.</param>
+/// <param name="logger">The logger for logging connection status.</param>
 void EnsureDatabaseConnections(IServiceProvider services, Microsoft.Extensions.Logging.ILogger logger)
 {
     using var scope = services.CreateScope();
@@ -286,21 +318,21 @@ void EnsureDatabaseConnections(IServiceProvider services, Microsoft.Extensions.L
 
     try
     {
-
-        //// 🔹 MongoDB Connection Check
+        // Ensure MongoDB connection
         var mongoClient = provider.GetRequiredService<IMongoClient>();
         mongoClient.ListDatabaseNames();
         logger.LogInformation("✅ MongoDB connection established successfully.");
 
-
-        // 🔹 Elasticsearch Connection Check
-        var elasticClient = provider.GetRequiredService<IElasticClient>();
+        // Ensure Elasticsearch connection and mappings
+        var elasticClient = provider.GetRequiredService<ElasticClient>();
         for (int attempt = 1; attempt <= 5; attempt++)
         {
             var pingResponse = elasticClient.Ping();
             if (pingResponse.IsValid)
             {
                 logger.LogInformation("✅ Elasticsearch connected on attempt {Attempt}.", attempt);
+                // Create index and mappings for ProductSearch
+                ElasticsearchMappings.CreateProductSearchIndexAsync(elasticClient).Wait();
                 return;
             }
 
@@ -317,3 +349,43 @@ void EnsureDatabaseConnections(IServiceProvider services, Microsoft.Extensions.L
         logger.LogError(ex, "❌ Error during service initialization.");
     }
 }
+
+
+//void EnsureDatabaseConnections(IServiceProvider services, Microsoft.Extensions.Logging.ILogger logger)
+//{
+//    using var scope = services.CreateScope();
+//    var provider = scope.ServiceProvider;
+
+//    try
+//    {
+
+//        //// 🔹 MongoDB Connection Check
+//        var mongoClient = provider.GetRequiredService<IMongoClient>();
+//        mongoClient.ListDatabaseNames();
+//        logger.LogInformation("✅ MongoDB connection established successfully.");
+
+
+//        // 🔹 Elasticsearch Connection Check
+//        var elasticClient = provider.GetRequiredService<IElasticClient>();
+//        for (int attempt = 1; attempt <= 5; attempt++)
+//        {
+//            var pingResponse = elasticClient.Ping();
+//            if (pingResponse.IsValid)
+//            {
+//                logger.LogInformation("✅ Elasticsearch connected on attempt {Attempt}.", attempt);
+//                return;
+//            }
+
+//            logger.LogWarning("⚠️ Elasticsearch connection failed (Attempt {Attempt}/5): {ErrorMessage}",
+//                              attempt, pingResponse.OriginalException?.Message ?? "Unknown error");
+
+//            Thread.Sleep(2000); // Retry delay
+//        }
+
+//        logger.LogError("❌ Failed to connect to Elasticsearch after multiple attempts.");
+//    }
+//    catch (Exception ex)
+//    {
+//        logger.LogError(ex, "❌ Error during service initialization.");
+//    }
+//}

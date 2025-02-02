@@ -6,6 +6,8 @@ services:
     restart: always
     ports:
       - "27017:27017"
+    networks:
+      - amcart_network
     volumes:
        - mongo_data:/data/db
         # - shared_database:/data/db
@@ -51,6 +53,9 @@ services:
       - "DatabaseSettings__ConnectionString=mongodb://catalogdb1:27017"
     depends_on:
       - catalogdb1
+    networks:
+      - amcart_network
+    restart: always
     ports:
       - "8000:80"
        #  - "8080:80"

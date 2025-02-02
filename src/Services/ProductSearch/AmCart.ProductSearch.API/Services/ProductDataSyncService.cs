@@ -11,47 +11,54 @@
     using AmCart.ProductSearch.API.Entities;
     using AmCart.ProductSearch.API.Services.Interfaces;
     using AutoMapper;
+using AmCart.ProductSearch.API.Configuration;
+using Microsoft.Extensions.Options;
 
     namespace AmCart.ProductSearch.API.Services
     {
+    /// <summary>
+    /// Service for syncing product data from MongoDB to Elasticsearch.
+    /// </summary>
+    public class ProductDataSyncService : IProductDataSyncService
+    {
+        private readonly IElasticClient _elasticClient;
+        private readonly IMongoCollection<Product> _productCollection;
+        private readonly ILogger<ProductDataSyncService> _logger;
+        private readonly IMapper _mapper;
+
+        private const int BatchSize = 100; // Process 100 products per batch
+        private const int MaxRetryAttempts = 3; // Retry failed batches up to 3 times
+
         /// <summary>
-        /// Service for syncing product data from MongoDB to Elasticsearch.
+        /// Initializes a new instance of <see cref="ProductDataSyncService"/>.
         /// </summary>
-        public class ProductDataSyncService : IProductDataSyncService
+        /// <param name="elasticClient">Elasticsearch client for indexing products.</param>
+        /// <param name="mongoClient">MongoDB client for retrieving product data.</param>
+        /// <param name="mongoSettings">MongoDB settings retrieved from configuration.</param>
+        /// <param name="logger">Logger instance for logging.</param>
+        /// <param name="mapper">AutoMapper instance for entity mapping.</param>
+        public ProductDataSyncService(
+            IElasticClient elasticClient,
+            IMongoClient mongoClient,
+            IOptions<MongoDbSettings> mongoSettings,
+            ILogger<ProductDataSyncService> logger,
+            IMapper mapper)
         {
-            private readonly IElasticClient _elasticClient;
-            private readonly IMongoCollection<Product> _productCollection;
-            private readonly ILogger<ProductDataSyncService> _logger;
-            private readonly IMapper _mapper;
-
-            private const int BatchSize = 100; // Process 100 products per batch
-            private const int MaxRetryAttempts = 3; // Retry failed batches up to 3 times
-
-            /// <summary>
-            /// Initializes a new instance of <see cref="ProductDataSyncService"/>.
-            /// </summary>
-            /// <param name="elasticClient">Elasticsearch client for indexing products.</param>
-            /// <param name="mongoClient">MongoDB client for retrieving product data.</param>
-            /// <param name="mongoDbName">Name of the MongoDB database.</param>
-            /// <param name="mongoCollectionName">Name of the MongoDB collection containing products.</param>
-            /// <param name="logger">Logger instance for logging.</param>
-            /// <param name="mapper">AutoMapper instance for entity mapping.</param>
-            public ProductDataSyncService(
-                IElasticClient elasticClient,
-                IMongoClient mongoClient,
-                string mongoDbName,
-                string mongoCollectionName,
-                ILogger<ProductDataSyncService> logger,
-                IMapper mapper)
+            if (mongoSettings == null || mongoSettings.Value == null)
             {
-                _elasticClient = elasticClient ?? throw new ArgumentNullException(nameof(elasticClient));
-                _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-                _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-
-                // Access the MongoDB collection
-                _productCollection = mongoClient.GetDatabase(mongoDbName)
-                                                .GetCollection<Product>(mongoCollectionName);
+                throw new ArgumentNullException(nameof(mongoSettings), "MongoDB settings cannot be null.");
             }
+
+            _elasticClient = elasticClient ?? throw new ArgumentNullException(nameof(elasticClient));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+
+            // Access the MongoDB collection using settings
+            _productCollection = mongoClient
+                .GetDatabase(mongoSettings.Value.DatabaseName)
+                .GetCollection<Product>(mongoSettings.Value.CollectionName);
+        }
+
 
             /// <summary>
             /// Synchronizes product data from MongoDB to Elasticsearch in batches.
@@ -122,51 +129,101 @@
                 }
             }
 
-            /// <summary>
-            /// Attempts to bulk index a batch of products with retry logic.
-            /// </summary>
-            /// <param name="batch">List of products to be indexed.</param>
-            /// <returns>True if indexing succeeded, false otherwise.</returns>
-            private async Task<bool> TryBulkIndexWithRetries(List<AmCart.ProductSearch.API.Entities.ProductSearch> batch)
+        /// <summary>
+        /// Attempts to bulk index a batch of products with retry logic.
+        /// </summary>
+        /// <param name="batch">List of products to be indexed.</param>
+        /// <returns>True if indexing succeeded, false otherwise.</returns>
+        private async Task<bool> TryBulkIndexWithRetries(List<AmCart.ProductSearch.API.Entities.ProductSearch> batch)
+        {
+            for (int attempt = 1; attempt <= MaxRetryAttempts; attempt++)
             {
-                for (int attempt = 1; attempt <= MaxRetryAttempts; attempt++)
+                try
                 {
-                    try
-                    {
-                        await BulkIndexProductsAsync(batch);
-                        return true; // Success
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, $"⚠️ Attempt {attempt}/{MaxRetryAttempts} failed for batch indexing.");
-                        await Task.Delay(TimeSpan.FromSeconds(2 * attempt)); // Exponential backoff
-                    }
+                    var success = await BulkIndexProductsAsync(batch);
+                    if (success) return true; // Success
                 }
-                return false; // Failed after all attempts
-            }
-
-            /// <summary>
-            /// Performs bulk indexing of products into Elasticsearch.
-            /// </summary>
-            /// <param name="products">List of products to be indexed.</param>
-            private async Task BulkIndexProductsAsync(List<AmCart.ProductSearch.API.Entities.ProductSearch> products)
-            {
-                var bulkRequest = new BulkRequest("products")
+                catch (Exception ex)
                 {
-                    Operations = products.Select(product => new BulkIndexOperation<AmCart.ProductSearch.API.Entities.ProductSearch>(product))
-                                         .Cast<IBulkOperation>()
-                                         .ToList()
-                };
+                    _logger.LogWarning(ex, $"⚠️ Attempt {attempt}/{MaxRetryAttempts} failed for batch indexing.");
 
-                var bulkResponse = await _elasticClient.BulkAsync(bulkRequest);
-
-                if (!bulkResponse.IsValid)
-                {
-                    throw new Exception($"Elasticsearch bulk index error: {bulkResponse.DebugInformation}");
+                    // Add exponential backoff to avoid overwhelming Elasticsearch
+                    await Task.Delay(TimeSpan.FromSeconds(2 * attempt));
                 }
             }
+            return false; // Failed after all attempts
         }
+
+
+        /// <summary>
+        /// Performs bulk indexing of products into Elasticsearch.
+        /// </summary>
+        /// <param name="products">List of products to be indexed.</param>
+        private async Task<bool> BulkIndexProductsAsync(List<AmCart.ProductSearch.API.Entities.ProductSearch> products)
+        {
+            var existingProductIds = new List<string>(); // Store product IDs that already exist
+            var bulkRequest = new BulkRequest("products")
+            {
+                Operations = new List<IBulkOperation>()
+            };
+
+            foreach (var product in products)
+            {
+                var productId = product.Id.ToString(); // Assuming the product ID is a unique identifier
+
+                // Check if the product already exists in Elasticsearch using GetAsync
+                var getResponse = await _elasticClient.GetAsync<AmCart.ProductSearch.API.Entities.ProductSearch>(productId, g => g.Index("products"));
+
+                if (getResponse.Found)
+                {
+                    // Product already exists in Elasticsearch, skip it or log it
+                    existingProductIds.Add(productId);
+                    _logger.LogInformation($"Product {productId} already exists in Elasticsearch. Skipping index.");
+                    continue; // Skip indexing this product
+                }
+
+                // Add the product to the bulk request for indexing
+                bulkRequest.Operations.Add(new BulkIndexOperation<AmCart.ProductSearch.API.Entities.ProductSearch>(product));
+            }
+
+            if (bulkRequest.Operations.Count == 0)
+            {
+                _logger.LogInformation("No new products to index.");
+                return true; // No products to index
+            }
+
+            // Perform the bulk indexing
+            var bulkResponse = await _elasticClient.BulkAsync(bulkRequest);
+
+            if (!bulkResponse.IsValid)
+            {
+                _logger.LogError($"❌ Elasticsearch bulk index error: {bulkResponse.DebugInformation}");
+                return false;
+            }
+
+            if (bulkResponse.Errors)
+            {
+                foreach (var item in bulkResponse.ItemsWithErrors)
+                {
+                    _logger.LogWarning($"⚠️ Document ID {item.Id} failed: {item.Error.Reason}");
+                }
+
+                return false;
+            }
+
+            // Log products that were successfully indexed and the ones skipped
+            _logger.LogInformation($"✅ Successfully indexed {bulkResponse.Items.Count} new products.");
+            if (existingProductIds.Any())
+            {
+                _logger.LogInformation($"⛔ Skipped {existingProductIds.Count} existing products.");
+            }
+
+            return true;
+        }
+
+
     }
+}
 
 
 
