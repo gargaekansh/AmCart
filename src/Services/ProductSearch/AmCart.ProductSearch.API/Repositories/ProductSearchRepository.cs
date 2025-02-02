@@ -98,13 +98,13 @@ namespace AmCart.ProductSearch.API.Repositories
         {
 
 
-            var response = await _elasticClient.SearchAsync<Entities.ProductSearch>(s => s
+            //var response = await _elasticClient.SearchAsync<Entities.ProductSearch>(s => s
 
-                                          //.Size(10)
-                                          //.Query(q => q
-                                          //.MultiMatch(mm => mm
-                                          //  .Query(query)
-                                          //  .Fields("DestCountry, OriginCountry"))));
+            //                              //.Size(10)
+            //                              //.Query(q => q
+            //                              //.MultiMatch(mm => mm
+            //                              //  .Query(query)
+            //                              //  .Fields("DestCountry, OriginCountry"))));
 
 
             if (string.IsNullOrWhiteSpace(query))
@@ -130,22 +130,38 @@ namespace AmCart.ProductSearch.API.Repositories
                     .Bool(b => b
                         .Should(
                     // Full-text search with boosting applied to Name, Category, and Description
-                    sh => sh.MultiMatch(m => m
-                    .Fields("Name, Category,Description")
+                    //sh => sh.MultiMatch(m => m
+                    //.Fields("Name, Category,Description")
 
-                    //sh => sh.MultiMatch(m => m
-                    //      .Fields(f => f
-                    //          .Field(p => p.Name)        // Search in 'Name' field
-                    //          .Field(p => p.Category)     // Search in 'Category' field
-                    //          .Field(p => p.Description)  // Search in 'Description' field
-                    //      )
-                    // Full-text search with boosting applied to Name, Category, and Description
-                    //sh => sh.MultiMatch(m => m
-                    //.Fields(f => f // Correct Fields usage - finally!
-                    //    .Field(p => p.Name)
-                    //    .Field(p => p.Category)
-                    //    .Field(p => p.Description)
-                    //))
+                    // MultiMatch query with specified fields (Name, Category, Description)
+                    sh => sh.MultiMatch(m => m
+                     .Fields("name, category,description")
+
+
+                                                             //.Fields(new Fields("name", "category", "description"))  // Specify fields as a collection
+
+                                                             //  .Fields(new Field[]{new Field("name"), new Field("category"), new Field("description") })
+
+                                                             // sh => sh.MultiMatch(m => m
+                                                             //.Fields(f => f
+                                                             //    .Field("name")        // Search in 'Name' field
+                                                             //    .Field("category")    // Search in 'Category' field
+                                                             //    .Field("description") // Search in 'Description' field
+                                                             //)
+
+                                                             //sh => sh.MultiMatch(m => m
+                                                             //      .Fields(f => f
+                                                             //          .Field(p => p.Name)        // Search in 'Name' field
+                                                             //          .Field(p => p.Category)     // Search in 'Category' field
+                                                             //          .Field(p => p.Description)  // Search in 'Description' field
+                                                             //      )
+                                                             // Full-text search with boosting applied to Name, Category, and Description
+                                                             //sh => sh.MultiMatch(m => m
+                                                             //.Fields(f => f // Correct Fields usage - finally!
+                                                             //    .Field(p => p.Name)
+                                                             //    .Field(p => p.Category)
+                                                             //    .Field(p => p.Description)
+                                                             //))
                                                              .Query(query)
                                 //.Fuzziness(Fuzziness.Auto) // Or: Fuzziness.EditDistance(2) for a fixed edit distance
                                 //.Fuzziness(Fuzziness.EditDistance(2))
