@@ -92,19 +92,14 @@ namespace AmCart.ProductSearch.API.Repositories
         }
 
 
-
+        ///// <summary>
+        ///// Performs a full-text, fuzzy search and autocomplete for products, prioritizing matches in Name, Category, and Description.
+        ///// </summary>
+        ///// <param name="query">Search query to use for matching products.</param>
+        ///// <returns>A task representing the search response, which contains the matching products.</returns>
 
         public async Task<SearchResponse<Entities.ProductSearch>> SearchAsync(string query)
         {
-
-
-            //var response = await _elasticClient.SearchAsync<Entities.ProductSearch>(s => s
-
-            //                              //.Size(10)
-            //                              //.Query(q => q
-            //                              //.MultiMatch(mm => mm
-            //                              //  .Query(query)
-            //                              //  .Fields("DestCountry, OriginCountry"))));
 
 
             if (string.IsNullOrWhiteSpace(query))
@@ -135,7 +130,13 @@ namespace AmCart.ProductSearch.API.Repositories
 
                     // MultiMatch query with specified fields (Name, Category, Description)
                     sh => sh.MultiMatch(m => m
-                     .Fields("name, category,description")
+                    //.Fields("name, category,description")
+
+                    //.Fields(new Field("name")
+                    //.And(new Field("category"))
+                    //.And(new Field("description")))
+
+                    .Fields(new[] { "name", "category", "description" })
 
 
                                                              //.Fields(new Fields("name", "category", "description"))  // Specify fields as a collection
@@ -185,36 +186,62 @@ namespace AmCart.ProductSearch.API.Repositories
                         )
                     )
                 )
-          //.Sort(s => s // Sort by a combination of score and name.keyword
-          //     .Combine(c => c
-          //         .Ascending(a => a.Field(f => f.Name.Keyword)) // Sort by name.keyword ascending
-          //         .Descending(d => d.Field("_score")) // Sort by score descending
-          //     )
-          //)
-          //.Size(50)
+    //.Sort(s => s // Sort by a combination of score and name.keyword
+    //     .Combine(c => c
+    //         .Ascending(a => a.Field(f => f.Name.Keyword)) // Sort by name.keyword ascending
+    //         .Descending(d => d.Field("_score")) // Sort by score descending
+    //     )
+    //)
+    //.Size(50)
 
 
-          //.Sort(so => so  // Sort by a combination of score and name.keyword
-          //    .Field(f => f.Name.Keyword, fd => fd.Order(SortOrder.Asc)  // Sort by name.keyword ascending
-          //    .Field(f => "_score", fd => fd.Order(SortOrder.Desc))     // Sort by score descending
-          //)
-          //.Size(50) // Limit results to 50 for performance
+    //.Sort(so => so  // Sort by a combination of score and name.keyword
+    //    .Field(f => f.Name.Keyword, fd => fd.Order(SortOrder.Asc)  // Sort by name.keyword ascending
+    //    .Field(f => "_score", fd => fd.Order(SortOrder.Desc))     // Sort by score descending
+    //)
+    //.Size(50) // Limit results to 50 for performance
 
-          .Sort(so => so
-            .Field(f => f.Name.Keyword, fd => fd.Order(SortOrder.Asc)) // Correct!
-            .Field("_score", fd => fd.Order(SortOrder.Desc))         // Correct!
+    //  .Sort(so => so
+    //    .Field(f => f.Name.Keyword, fd => fd.Order(SortOrder.Asc)) // Correct!
+    //    .Field("_score", fd => fd.Order(SortOrder.Desc))         // Correct!
+    //)
+    //.Size(50)
+
+    //.Sort(s => s
+    //        .Field(f => f.Field("name.keyword").Order(SortOrder.Asc))  // Sort by name.keyword ascending
+    //        .Field(f => f.Field("_score").Order(SortOrder.Desc))       // Sort by score descending
+    //    )
+    //    .Size(50) // Limit results to 50
+
+
+
+            .Sort(so => so
+        .Field(f => f.Name.Suffix("keyword"), new FieldSort { Order = SortOrder.Asc }) // Sort by name.keyword ascending
+        .Field(f => "_score", new FieldSort { Order = SortOrder.Desc }) // Sort by score descending
         )
-        .Size(50)
-
-
+         .Size(50) // Limit results to 50
                 );
 
             if (!searchResponse.IsSuccess())
             {
                 _logger.LogError("Search query failed. Errors: {Errors}", searchResponse.DebugInformation);
-                if (searchResponse.OriginalException != null)
+
+                // More robust exception handling (check DebugInformation)
+                if (!string.IsNullOrEmpty(searchResponse.DebugInformation))
                 {
-                    _logger.LogError(searchResponse.OriginalException, "Elasticsearch query exception");
+                    // Log the entire DebugInformation string, which may contain exception details
+                    _logger.LogError("Elasticsearch query details: {Details}", searchResponse.DebugInformation);
+
+                    // Attempt to extract exception information (more advanced, might require parsing)
+                    // This is highly dependent on the format of the DebugInformation string
+                    // and might need to be adapted to your specific error messages.
+                    if (searchResponse.DebugInformation.Contains("exception")) // Example: check for "exception" keyword
+                    {
+                        // You might try to parse the exception details from the string here
+                        // This is complex and depends on the format of the error response.
+                        // It's often better to just log the entire DebugInformation string.
+                        _logger.LogError("Elasticsearch query exception details found in DebugInformation.");
+                    }
                 }
             }
 
