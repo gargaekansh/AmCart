@@ -31,6 +31,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ProductSearch", "ProductSea
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AmCart.ProductSearch.API", "Services\ProductSearch\AmCart.ProductSearch.API\AmCart.ProductSearch.API.csproj", "{E1FA6004-B69D-4B89-8618-35E6C8BCD9BE}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Identity", "Identity", "{2B51DC08-D647-47D1-A6DA-9FF592694166}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AmCart.Identity.API", "Services\Identity\AmCart.Identity.API\AmCart.Identity.API.csproj", "{A8F20372-19E9-4DA3-9F99-B76CAE986943}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +61,10 @@ Global
 		{E1FA6004-B69D-4B89-8618-35E6C8BCD9BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E1FA6004-B69D-4B89-8618-35E6C8BCD9BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E1FA6004-B69D-4B89-8618-35E6C8BCD9BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8F20372-19E9-4DA3-9F99-B76CAE986943}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8F20372-19E9-4DA3-9F99-B76CAE986943}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8F20372-19E9-4DA3-9F99-B76CAE986943}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8F20372-19E9-4DA3-9F99-B76CAE986943}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -72,6 +80,8 @@ Global
 		{77728817-F6C5-4BC5-8371-AAC7F0FB5698} = {96434641-8917-47A7-AC56-BD0CD96C6252}
 		{C4B681AE-C45B-4AB8-BF1E-FAEB036E48F8} = {9CF9511F-A9E4-447A-B836-B4BE515B0284}
 		{E1FA6004-B69D-4B89-8618-35E6C8BCD9BE} = {C4B681AE-C45B-4AB8-BF1E-FAEB036E48F8}
+		{2B51DC08-D647-47D1-A6DA-9FF592694166} = {9CF9511F-A9E4-447A-B836-B4BE515B0284}
+		{A8F20372-19E9-4DA3-9F99-B76CAE986943} = {2B51DC08-D647-47D1-A6DA-9FF592694166}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {24B3784B-FE4C-454F-BF9E-49699EA8E8E7}
