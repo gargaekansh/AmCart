@@ -52,11 +52,11 @@ namespace AmCart.Identity.API.Data
 
         private void MigrateAndSeed()
         {
-            // Apply any pending migrations to the database
-            _context.Database.Migrate();
+            //// Apply any pending migrations to the database
+            //_context.Database.Migrate();
 
-            // Seed database with initial data
-            SeedDatabase().Wait();
+            //// Seed database with initial data
+            //SeedDatabase().Wait();
         }
 
         private async Task SeedDatabase()
