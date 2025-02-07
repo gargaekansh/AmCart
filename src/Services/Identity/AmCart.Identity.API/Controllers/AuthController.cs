@@ -8,6 +8,7 @@ using AmCart.Identity.API.Models;
 using AmCart.Identity.API.Services.Interfaces;
 using Microsoft.AspNetCore.Identity.Data;
 using IdentityServer4.Test;
+using System.Security.Claims;
 
 namespace IdentityService.Controllers
 {
@@ -136,5 +137,75 @@ namespace IdentityService.Controllers
             _logger.LogInformation("User '{Email}' logged in successfully.", model.Email);
             return Ok(new { Token = token });
         }
+
+        /// <summary>
+        /// Logs out the authenticated user.
+        /// </summary>
+        /// <returns>Success message if logout is successful.</returns>
+        [HttpPost("logout")]
+        [Authorize] // Requires authentication to log out
+        public async Task<IActionResult> Logout()
+        {
+            string userId = User.Identity?.Name ?? "Unknown"; // Safe null check
+
+            await _signInManager.SignOutAsync();  // Clears authentication session
+
+            _logger.LogInformation("User '{UserId}' logged out successfully.", userId);
+
+            return Ok(new { message = "User logged out successfully." });
+        }
+
+
+        /// <summary>
+        /// Retrieves the profile of the currently logged-in user.
+        /// </summary>
+        [HttpGet("profile")]
+        [Authorize] // Requires authentication
+        public async Task<IActionResult> GetProfile()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return NotFound("User not found");
+
+            return Ok(new
+            {
+                user.Id,
+                user.Email,
+                user.Gender,
+                user.MobileNumber
+            });
+        }
+
+
+        /// <summary>
+        /// Updates the profile information of the logged-in user.
+        /// </summary>
+        [HttpPut("profile")]
+        [Authorize] // User must be logged in to update profile
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return NotFound("User not found");
+
+            // Update user details
+            user.Gender = model.Gender;
+            user.MobileNumber = model.MobileNumber;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors);
+            }
+
+            return Ok(new { message = "Profile updated successfully." });
+        }
+
+
+
     }
 }
