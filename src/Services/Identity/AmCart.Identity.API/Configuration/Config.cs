@@ -169,7 +169,8 @@ namespace AmCart.Identity.API.Configuration
                 IdentityServerConstants.StandardScopes.OpenId,
                 IdentityServerConstants.StandardScopes.Profile,
                 "discount.fullaccess",
-                "ordersagaorchestrator.fullaccess"
+                "ordersagaorchestrator.fullaccess",
+                 "catalogapi.fullaccess" //I have added 
             }
         },
 

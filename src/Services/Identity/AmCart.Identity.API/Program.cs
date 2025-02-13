@@ -40,13 +40,24 @@ builder.Services.AddIdentityServer(options =>
     options.EmitStaticAudienceClaim = true;
     //options.IssuerUri = "AmCart";
     options.IssuerUri = builder.Configuration["IdentityIssuer"];
+
+    //options.SupportedGrantTypes = options.SupportedGrantTypes.Append("urn:ietf:params:oauth:grant-type:token-exchange").ToList();  // Append is usually safer
+
+    //// Now you can access SupportedGrantTypes
+    //options.SupportedGrantTypes.Add("urn:ietf:params:oauth:grant-type:token-exchange");
+
 })
 .AddDeveloperSigningCredential()  // Use a real certificate in production
 .AddAspNetIdentity<ApplicationUser>()
 .AddInMemoryIdentityResources(Config.IdentityResources)
 .AddInMemoryApiResources(Config.ApiResources)
 .AddInMemoryApiScopes(Config.ApiScopes)
-.AddInMemoryClients(Config.Clients(builder.Configuration));
+.AddInMemoryClients(Config.Clients(builder.Configuration)
+
+);
+
+
+
 
 //builder.Services.AddAuthentication();
 

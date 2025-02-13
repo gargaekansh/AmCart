@@ -13,6 +13,11 @@ using System;
 using System.Linq;
 using System.IdentityModel.Tokens.Jwt;
 using IdentityServer4.AccessTokenValidation;
+using Catalog.API.Filters;
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
+using Catalog.API.Authorization;
 
 namespace Catalog.API
 {
@@ -21,6 +26,10 @@ namespace Catalog.API
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
+
+            // clear Microsoft changed claim names from dictionary and preserve original ones
+            // e.g. Microsoft stack renames the 'sub' claim name to http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier
+            JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
         }
 
         public IConfiguration Configuration { get; }
@@ -45,11 +54,62 @@ namespace Catalog.API
 
                 options.AddPolicy("CanRead", policy => policy.RequireRole("Administrator", "User"));
                 options.AddPolicy("HasFullAccess", policy => policy.RequireRole("Administrator"));
-        });
+
+
+                // Policies based on scopes
+                options.AddPolicy("CanReadScope", policy => policy.RequireClaim("scope", "catalogapi.read", "catalogapi.fullaccess"));
+                options.AddPolicy("HasFullAccessScope", policy => policy.RequireClaim("scope", "catalogapi.fullaccess"));
+
+                // Policies based on roles
+                options.AddPolicy("CanReadRole", policy => policy.RequireRole("Administrator", "User"));
+                options.AddPolicy("HasFullAccessRole", policy => policy.RequireRole("Administrator"));
+
+                // Combined Policies (OR logic)
+                options.AddPolicy("CanRead", policy => policy.Requirements.Add(new CombinedRequirement(
+                    options.GetPolicy("CanReadScope").Requirements.ToList(),
+                    options.GetPolicy("CanReadRole").Requirements.ToList())));
+
+                options.AddPolicy("HasFullAccess", policy => policy.Requirements.Add(new CombinedRequirement(
+                    options.GetPolicy("HasFullAccessScope").Requirements.ToList(),
+                    options.GetPolicy("HasFullAccessRole").Requirements.ToList())));
+
+
+
+            });
+
+
+            // Register the handler
+            services.AddScoped<IAuthorizationHandler, CombinedRequirementHandler>();
+
             services.AddControllers();
+            ////services.AddSwaggerGen(c =>
+            ////{
+            ////    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Catalog.API", Version = "v1" });
+            ////});
+            ///
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Catalog.API", Version = "v1" });
+
+                c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.OAuth2,
+                    Flows = new OpenApiOAuthFlows()
+                    {
+                        Implicit = new OpenApiOAuthFlow()
+                        {
+                            AuthorizationUrl = new Uri($"{Configuration.GetValue<string>("IdentityProviderSettings:IdentityServiceUrl")}/connect/authorize"),
+                            TokenUrl = new Uri($"{Configuration.GetValue<string>("IdentityProviderSettings:IdentityServiceUrl")}/connect/token"),
+                            Scopes = new Dictionary<string, string>()
+                            {
+                                { "catalogapi.fullaccess", "Catalog API" }
+                            }
+                        }
+                    }
+                });
+
+                c.OperationFilter<AuthorizeCheckOperationFilter>();
             });
 
             services.AddScoped<ICatalogContext, CatalogContext>();
@@ -74,7 +134,8 @@ namespace Catalog.API
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
+                //endpoints.MapDefaultHealthChecks();
+                endpoints.MapControllers().RequireAuthorization();
             });
 
             // Seed Product Data
@@ -113,5 +174,10 @@ namespace Catalog.API
                 }
             }
         }
+
+
+
+
+
     }
 }
