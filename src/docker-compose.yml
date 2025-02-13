@@ -6,6 +6,19 @@ services:
     networks:
       - amcart_network
 
+  identitydb:
+    image: mcr.microsoft.com/mssql/server:2017-latest
+    container_name: identitydb
+    environment:
+      SA_PASSWORD: "Pass@word123"
+      ACCEPT_EULA: "Y"
+    restart: always
+    ports:
+      - 1444:1433
+    volumes:
+      - identity_data:/var/opt/mssql
+    networks:
+      - amcart_network
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.5.0
@@ -13,12 +26,23 @@ services:
     environment:
       - discovery.type=single-node
       - ELASTIC_PASSWORD=changeme
+      - xpack.monitoring.enabled=true
+      - xpack.watcher.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
+      - "9300:9300" # Add transport port for cluster communication
     networks:
       - amcart_network
+    healthcheck: # Add a healthcheck
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health?pretty || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # basketdb:
   #   image: redis:alpine
@@ -58,6 +82,35 @@ services:
     networks:
       - amcart_network
     restart: always
+
+  amcart.identity.api:
+    image: ${DOCKER_REGISTRY-}amcart.identity.api
+    build:
+      context: .
+      dockerfile: Identity/AmCart.Identity.API/Dockerfile
+    # environment:
+    #   - ASPNETCORE_ENVIRONMENT=Development
+    #   # - ConnectionStrings__IdentityConnection=Server=identitydb;Database=Identity;User Id=sa;Password=Pass@word123; # Use Docker secrets for password!
+    #   - "ConnectionStrings:IdentityDb=Server=identitydb;Database=IdentityDb;User Id=sa;Password=Pass@word123;"
+    #   - IdentityIssuer=https://${ESHOP_EXTERNAL_DNS_NAME_OR_IP}:8021
+    #   # ... other IdentityServer environment variables (clients, secrets, signing keys, etc.) - See below
+    # ports:
+    #   - "8003:80" # Or 5000:5000 if that's what your app uses
+    #   - "8004:443" # Expose HTTPS port if configured
+    # volumes:
+    #   - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+    #   - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
+    # depends_on:
+    #   - identitydb
+    # networks:
+    #   - amcart_network
+    # restart: always
+    # healthcheck: # Important for IdentityServer
+    #   test: ["CMD-SHELL", "curl -fs http://localhost:8003/.well-known/openid-configuration || exit 1"] # Adjust port if necessary
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 20s
 
   # basket.api:
   #   image: ${DOCKER_REGISTRY-}basketapi
@@ -106,6 +159,7 @@ networks:
 
 volumes:
    mongo_data:
+   identity_data:
    elasticsearch_data:
     driver: local
      # mongodb-catalogdb1:

@@ -51,6 +51,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - "DatabaseSettings__ConnectionString=mongodb://catalogdb1:27017"
+      # - IdentityProviderSettings:IdentityServiceUrl=https://shopping.identity:8003
+      - IdentityProviderSettings:IdentityServiceUrl=https://amcart.identity.api
+      # - IdentityServerURL=http://amcart.identity.api
     depends_on:
       - catalogdb1
     networks:
@@ -59,6 +62,33 @@ services:
     ports:
       - "8000:80"
        #  - "8080:80"
+
+  amcart.identity.api:
+        container_name: amcart.identity.api
+        environment:
+          - ASPNETCORE_ENVIRONMENT=Development
+          # - ConnectionStrings__IdentityConnection=Server=identitydb;Database=Identity;User Id=sa;Password=Pass@word123; # Use Docker secrets for password!
+          - "ConnectionStrings:IdentityDb=Server=identitydb;Database=IdentityDb;User Id=sa;Password=Pass@word123;"
+          # - IdentityIssuer=localhost:8003
+          - IdentityIssuer=amcart.identity.api
+          # ... other IdentityServer environment variables (clients, secrets, signing keys, etc.) - See below
+        ports:
+          - "8003:80" # Or 5000:5000 if that's what your app uses
+          - "8004:443" # Expose HTTPS port if configured
+        volumes:
+          - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+          - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
+        depends_on:
+          - identitydb
+        networks:
+          - amcart_network
+        restart: always
+        healthcheck: # Important for IdentityServer
+          test: ["CMD-SHELL", "curl -fs http://localhost:8003/.well-known/openid-configuration || exit 1"] # Adjust port if necessary
+          interval: 10s
+          timeout: 5s
+          retries: 5
+          start_period: 20s
 
   # basket.api:
   #   container_name: basket.api

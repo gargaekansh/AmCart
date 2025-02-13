@@ -84,6 +84,7 @@ namespace Catalog.API.Controllers
 
         [HttpDelete("{id:int}", Name = "DeleteProduct")]
         [ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
+        [Authorize(Roles = "Administrator", Policy = "HasFullAccess")]
         public async Task<IActionResult> DeleteProductById(int id)
         {
             bool result = await _repository.DeleteProduct(id);

@@ -65,14 +65,58 @@ namespace IdentityService.Controllers
 
             var result = await _userManager.CreateAsync(user, model.Password);
 
+            //if (result.Succeeded)
+            //{
+            //    _logger.LogInformation("User '{Email}' registered successfully.", model.Email);
+
+
+
+
+            //    // Improved: Return a more meaningful Created response with user details
+            //    return CreatedAtAction(nameof(GetUser), new { email = user.Email }, new { message = "User registered successfully.", user = new { user.Id, user.Email, user.Gender, user.MobileNumber } }); // 201 Created with location header
+
+            //}
+
             if (result.Succeeded)
             {
                 _logger.LogInformation("User '{Email}' registered successfully.", model.Email);
 
-                // Improved: Return a more meaningful Created response with user details
-                return CreatedAtAction(nameof(GetUser), new { email = user.Email }, new { message = "User registered successfully.", user = new { user.Id, user.Email, user.Gender, user.MobileNumber } }); // 201 Created with location header
+                // 1. Add User to Role
+                var roleResult = await _userManager.AddToRoleAsync(user, "User"); // Or use a constant: Roles.User
+                if (!roleResult.Succeeded)
+                {
+                    _logger.LogError("Failed to add user '{Email}' to role. Errors: {Errors}", model.Email, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+                    await _userManager.DeleteAsync(user); // Rollback
+                    return BadRequest(new { errors = new[] { "Failed to assign role. Please contact support." } });
+                }
 
+                // 2. Generate JWT Token with Role Information (Claims)
+                var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, user.UserName), // Or user.Email
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.NameIdentifier, user.Id), // Crucial for user identification
+                // Add other user claims as needed (Gender, MobileNumber, etc.)
+            };
+
+                // Add roles as claims (important!)
+                var roles = await _userManager.GetRolesAsync(user);
+                foreach (var role in roles)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role)); // Or use a custom claim type: "roles"
+                }
+
+                var token = _tokenService.GenerateJwtToken(user, false, claims);  // Pass claims to your token service
+
+
+                return CreatedAtAction(nameof(GetUser), new { email = user.Email }, new
+                {
+                    message = "User registered successfully.",
+                    user = new { user.Id, user.Email, user.Gender, user.MobileNumber },
+                    token = token
+                });
             }
+
             else
             {
                 _logger.LogWarning("User registration failed for {Email}. Errors: {Errors}",
@@ -106,12 +150,12 @@ namespace IdentityService.Controllers
         /// Logs in a user and returns a JWT token.
         /// </summary>
         /// <param name="model">User login request model.</param>
-        /// <returns>JWT Token.</returns>
+        /// <returns>A 200 OK response with a JWT token, or a 401 Unauthorized if login fails.</returns>
         [HttpPost("login")]
-        [AllowAnonymous] // Allows anyone to access this endpoint without authentication
+        [AllowAnonymous]
         [Consumes(MediaTypeNames.Application.Json)]
         [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status401Unauthorized)] // Corrected status code
         public async Task<IActionResult> Login([FromBody] ExtendedLoginRequest model)
         {
             if (!ModelState.IsValid)
@@ -131,12 +175,19 @@ namespace IdentityService.Controllers
                 return Unauthorized("Invalid email or password.");
             }
 
-            // Generate JWT token
-            var token = _tokenService.GenerateJwtToken(user, model.RememberMe);
+            var claims = new List<Claim>();
+            var roles = await _userManager.GetRolesAsync(user);
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
+            var token = _tokenService.GenerateJwtToken(user, model.RememberMe, claims); // Include claims here
 
             _logger.LogInformation("User '{Email}' logged in successfully.", model.Email);
             return Ok(new { Token = token });
         }
+
 
         /// <summary>
         /// Logs out the authenticated user.

@@ -13,7 +13,7 @@ namespace AmCart.Identity.API.Services
 {
 
 
-    public class TokenService: ITokenService
+    public class TokenService : ITokenService
     {
         private readonly JwtSettings _jwtSettings;
 
@@ -27,17 +27,31 @@ namespace AmCart.Identity.API.Services
         /// </summary>
         /// <param name="user">The authenticated user for whom the token will be generated.</param>
         /// <param name="rememberMe">Indicates whether the token should have a longer expiration time (for "Remember Me" functionality).</param>
+        /// <param name="additionalClaims"></param>
         /// <returns>A JWT token as a string that the user can use for authenticated requests.</returns>
-        public string GenerateJwtToken(ApplicationUser user, bool rememberMe)
+        public string GenerateJwtToken(ApplicationUser user, bool rememberMe = false, List<Claim>? additionalClaims = null)
         {
             // Define claims to include in the JWT token
-            var claims = new[]
+            var claims = new List<Claim>
             {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(ClaimTypes.Name, user.UserName),
             new Claim(ClaimTypes.Email, user.Email)
         };
+
+            if (additionalClaims != null && additionalClaims.Count > 0)
+            {
+                foreach (var claim in additionalClaims)
+                {
+                    if (claim.Type == ClaimTypes.Role) // Add only role claims
+                    {
+                        claims.Add(claim);
+                    }
+                }
+
+
+            }
 
             // Define the secret key used to sign the JWT token
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));

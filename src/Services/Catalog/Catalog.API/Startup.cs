@@ -11,6 +11,8 @@ using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
 using System;
 using System.Linq;
+using System.IdentityModel.Tokens.Jwt;
+using IdentityServer4.AccessTokenValidation;
 
 namespace Catalog.API
 {
@@ -26,11 +28,30 @@ namespace Catalog.API
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddHttpContextAccessor();
+
+            services.AddAuthentication(IdentityServerAuthenticationDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.Authority = Configuration["IdentityProviderSettings:IdentityServiceUrl"];
+                options.Audience = "catalogapi";
+                options.RequireHttpsMetadata = false; // added because of a healthcheck
+            });
+
+            services.AddAuthorization(options =>
+            {
+                //options.AddPolicy("CanRead", policy => policy.RequireClaim("scope", "catalogapi.read", "catalogapi.fullaccess"));
+                //options.AddPolicy("HasFullAccess", policy => policy.RequireClaim("scope", "catalogapi.fullaccess"));
+
+                options.AddPolicy("CanRead", policy => policy.RequireRole("Administrator", "User"));
+                options.AddPolicy("HasFullAccess", policy => policy.RequireRole("Administrator"));
+        });
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Catalog.API", Version = "v1" });
             });
+
             services.AddScoped<ICatalogContext, CatalogContext>();
             services.AddScoped<IProductRepository, ProductRepository>();
 
