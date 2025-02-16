@@ -1,4 +1,5 @@
 ﻿using AmCart.ProductSearch.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -27,9 +28,11 @@ namespace AmCart.ProductSearch.API.Controllers
         /// <param name="query">The search query string to find relevant products.</param>
         /// <returns>A list of products matching the search query.</returns>
         [HttpGet("search")]
+        //[HttpGet]
         [ProducesResponseType(typeof(IEnumerable<AmCart.ProductSearch.API.Entities.ProductSearch>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.BadRequest)] // Handles bad request errors
         [ProducesResponseType((int)HttpStatusCode.InternalServerError)] // Handles internal server errors
+        [AllowAnonymous]
         public async Task<IActionResult> Search(string query)
         {
             // Validate query parameter

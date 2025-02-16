@@ -26,6 +26,7 @@ namespace Catalog.API.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<Product>), (int)HttpStatusCode.OK)]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
         {
             var products = await _repository.GetProducts();
@@ -35,6 +36,7 @@ namespace Catalog.API.Controllers
         [HttpGet("{id:int}", Name = "GetProduct")]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [ProducesResponseType(typeof(Product), (int)HttpStatusCode.OK)]
+        [AllowAnonymous]
         public async Task<ActionResult<Product>> GetProductById(int id)
         {
             var product = await _repository.GetProduct(id);
@@ -50,6 +52,7 @@ namespace Catalog.API.Controllers
         [Route("[action]/{category}", Name = "GetProductByCategory")]
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<Product>), (int)HttpStatusCode.OK)]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Product>>> GetProductByCategory(string category)
         {
             var products = await _repository.GetProductByCategory(category);

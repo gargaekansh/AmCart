@@ -186,39 +186,43 @@ namespace AmCart.ProductSearch.API.Repositories
                         )
                     )
                 )
-    //.Sort(s => s // Sort by a combination of score and name.keyword
-    //     .Combine(c => c
-    //         .Ascending(a => a.Field(f => f.Name.Keyword)) // Sort by name.keyword ascending
-    //         .Descending(d => d.Field("_score")) // Sort by score descending
-    //     )
-    //)
-    //.Size(50)
+          //.Sort(s => s // Sort by a combination of score and name.keyword
+          //     .Combine(c => c
+          //         .Ascending(a => a.Field(f => f.Name.Keyword)) // Sort by name.keyword ascending
+          //         .Descending(d => d.Field("_score")) // Sort by score descending
+          //     )
+          //)
+          //.Size(50)
 
 
-    //.Sort(so => so  // Sort by a combination of score and name.keyword
-    //    .Field(f => f.Name.Keyword, fd => fd.Order(SortOrder.Asc)  // Sort by name.keyword ascending
-    //    .Field(f => "_score", fd => fd.Order(SortOrder.Desc))     // Sort by score descending
-    //)
-    //.Size(50) // Limit results to 50 for performance
+          //.Sort(so => so  // Sort by a combination of score and name.keyword
+          //    .Field(f => f.Name.Keyword, fd => fd.Order(SortOrder.Asc)  // Sort by name.keyword ascending
+          //    .Field(f => "_score", fd => fd.Order(SortOrder.Desc))     // Sort by score descending
+          //)
+          //.Size(50) // Limit results to 50 for performance
 
-    //  .Sort(so => so
-    //    .Field(f => f.Name.Keyword, fd => fd.Order(SortOrder.Asc)) // Correct!
-    //    .Field("_score", fd => fd.Order(SortOrder.Desc))         // Correct!
-    //)
-    //.Size(50)
+          //  .Sort(so => so
+          //    .Field(f => f.Name.Keyword, fd => fd.Order(SortOrder.Asc)) // Correct!
+          //    .Field("_score", fd => fd.Order(SortOrder.Desc))         // Correct!
+          //)
+          //.Size(50)
 
-    //.Sort(s => s
-    //        .Field(f => f.Field("name.keyword").Order(SortOrder.Asc))  // Sort by name.keyword ascending
-    //        .Field(f => f.Field("_score").Order(SortOrder.Desc))       // Sort by score descending
-    //    )
-    //    .Size(50) // Limit results to 50
+          //.Sort(s => s
+          //        .Field(f => f.Field("name.keyword").Order(SortOrder.Asc))  // Sort by name.keyword ascending
+          //        .Field(f => f.Field("_score").Order(SortOrder.Desc))       // Sort by score descending
+          //    )
+          //    .Size(50) // Limit results to 50
 
 
 
-            .Sort(so => so
-        .Field(f => f.Name.Suffix("keyword"), new FieldSort { Order = SortOrder.Asc }) // Sort by name.keyword ascending
-        .Field(f => "_score", new FieldSort { Order = SortOrder.Desc }) // Sort by score descending
-        )
+          //    .Sort(so => so
+          //.Field(f => f.Name.Suffix("keyword"), new FieldSort { Order = SortOrder.Asc }) // Sort by name.keyword ascending
+          //.Field(f => "_score", new FieldSort { Order = SortOrder.Desc }) // Sort by score descending
+          //)
+          .Sort(so => so
+        .Field(f => f.Name.Suffix("keyword"),  s => s.Order(SortOrder.Asc)) // ✅ Sorting by name.keyword
+        .Field("_score", s => s.Order(SortOrder.Desc))                     // ✅ Sorting by relevance score
+    )
          .Size(50) // Limit results to 50
                 );
 

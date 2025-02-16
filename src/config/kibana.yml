@@ -1,0 +1,5 @@
+elasticsearch.hosts: ["http://elasticsearch:9200"] # Or http://localhost:9200 if Kibana is outside Docker
+# elasticsearch.username: "elastic"
+# elasticsearch.password: "changeme"  # Your Elasticsearch password
+
+elasticsearch.serviceAccountToken: "AAEAAWVsYXN0aWMva2liYW5hL2RlZmF1bHQ6ZHMtVTNCSG9RclNrZ0hLQWo0b1pudw"

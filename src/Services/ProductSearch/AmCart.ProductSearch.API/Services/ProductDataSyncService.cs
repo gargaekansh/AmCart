@@ -53,74 +53,74 @@ namespace AmCart.ProductSearch.API.Services
         }
 
 
-            /// <summary>
-            /// Synchronizes product data from MongoDB to Elasticsearch in batches.
-            /// </summary>
-            public async Task SyncProductDataAsync()
+        /// <summary>
+        /// Synchronizes product data from MongoDB to Elasticsearch in batches.
+        /// </summary>
+        public async Task SyncProductDataAsync()
+        {
+            try
             {
-                try
+                _logger.LogInformation("🔄 Starting product data sync from MongoDB to Elasticsearch...");
+
+                // Fetch all products from MongoDB
+                var products = await FetchProductsFromMongoDbAsync();
+
+                if (!products.Any())
                 {
-                    _logger.LogInformation("🔄 Starting product data sync from MongoDB to Elasticsearch...");
-
-                    // Fetch all products from MongoDB
-                    var products = await FetchProductsFromMongoDbAsync();
-
-                    if (!products.Any())
-                    {
-                        _logger.LogWarning("⚠️ No products found in MongoDB.");
-                        return;
-                    }
-
-                    // Convert MongoDB Product to Elasticsearch ProductSearch entity
-                    var productSearchList = _mapper.Map<List<AmCart.ProductSearch.API.Entities.ProductSearch>>(products);
-
-                    // Process indexing in batches
-                    await IndexProductsInBatchesAsync(productSearchList);
-
-                    _logger.LogInformation("✅ Product data sync completed successfully.");
+                    _logger.LogWarning("⚠️ No products found in MongoDB.");
+                    return;
                 }
-                catch (Exception ex)
+
+                // Convert MongoDB Product to Elasticsearch ProductSearch entity
+                var productSearchList = _mapper.Map<List<AmCart.ProductSearch.API.Entities.ProductSearch>>(products);
+
+                // Process indexing in batches
+                await IndexProductsInBatchesAsync(productSearchList);
+
+                _logger.LogInformation("✅ Product data sync completed successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error occurred during product data sync.");
+            }
+        }
+
+        /// <summary>
+        /// Fetches all products from MongoDB.
+        /// </summary>
+        /// <returns>List of MongoDB products.</returns>
+        private async Task<List<Product>> FetchProductsFromMongoDbAsync()
+        {
+            return await _productCollection.Find(FilterDefinition<Product>.Empty).ToListAsync();
+        }
+
+        /// <summary>
+        /// Indexes products into Elasticsearch in batches with retry logic.
+        /// </summary>
+        /// <param name="products">List of products to be indexed.</param>
+        private async Task IndexProductsInBatchesAsync(List<AmCart.ProductSearch.API.Entities.ProductSearch> products)
+        {
+            int totalProducts = products.Count;
+            int batchCount = (int)Math.Ceiling(totalProducts / (double)BatchSize);
+
+            _logger.LogInformation($"📦 Processing {totalProducts} products in {batchCount} batches...");
+
+            for (int i = 0; i < batchCount; i++)
+            {
+                var batch = products.Skip(i * BatchSize).Take(BatchSize).ToList();
+
+                bool success = await TryBulkIndexWithRetries(batch);
+
+                if (success)
                 {
-                    _logger.LogError(ex, "❌ Error occurred during product data sync.");
+                    _logger.LogInformation($"✅ Successfully indexed batch {i + 1}/{batchCount} ({batch.Count} products).");
+                }
+                else
+                {
+                    _logger.LogError($"❌ Failed to index batch {i + 1}/{batchCount} after multiple retries.");
                 }
             }
-
-            /// <summary>
-            /// Fetches all products from MongoDB.
-            /// </summary>
-            /// <returns>List of MongoDB products.</returns>
-            private async Task<List<Product>> FetchProductsFromMongoDbAsync()
-            {
-                return await _productCollection.Find(FilterDefinition<Product>.Empty).ToListAsync();
-            }
-
-            /// <summary>
-            /// Indexes products into Elasticsearch in batches with retry logic.
-            /// </summary>
-            /// <param name="products">List of products to be indexed.</param>
-            private async Task IndexProductsInBatchesAsync(List<AmCart.ProductSearch.API.Entities.ProductSearch> products)
-            {
-                int totalProducts = products.Count;
-                int batchCount = (int)Math.Ceiling(totalProducts / (double)BatchSize);
-
-                _logger.LogInformation($"📦 Processing {totalProducts} products in {batchCount} batches...");
-
-                for (int i = 0; i < batchCount; i++)
-                {
-                    var batch = products.Skip(i * BatchSize).Take(BatchSize).ToList();
-
-                    bool success = await TryBulkIndexWithRetries(batch);
-
-                    if (success)
-                    {
-                        _logger.LogInformation($"✅ Successfully indexed batch {i + 1}/{batchCount} ({batch.Count} products).");
-                    }
-                    else
-                    {
-                        _logger.LogError($"❌ Failed to index batch {i + 1}/{batchCount} after multiple retries.");
-                    }
-                }
-            }
+        }
 
         /// <summary>
         /// Attempts to bulk index a batch of products with retry logic.
@@ -165,18 +165,28 @@ namespace AmCart.ProductSearch.API.Services
                 var productId = product.Id.ToString(); // Assuming the product ID is a unique identifier
 
                 // Check if the product already exists in Elasticsearch using GetAsync
-                var getResponse = await _elasticClient.GetAsync<AmCart.ProductSearch.API.Entities.ProductSearch>(productId, g => g.Index("products"));
-
-                if (getResponse.Found)
+                try
                 {
-                    // Product already exists in Elasticsearch, skip it or log it
-                    existingProductIds.Add(productId);
-                    _logger.LogInformation($"Product {productId} already exists in Elasticsearch. Skipping index.");
-                    continue; // Skip indexing this product
-                }
+                    var getResponse = await _elasticClient.GetAsync<AmCart.ProductSearch.API.Entities.ProductSearch>(productId, g => g.Index("products"));
 
-                // Add the product to the bulk request for indexing
-                bulkRequest.Operations.Add(new BulkIndexOperation<AmCart.ProductSearch.API.Entities.ProductSearch>(product));
+
+                    if (getResponse.Found)
+                    {
+                        // Product already exists in Elasticsearch, skip it or log it
+                        existingProductIds.Add(productId);
+                        _logger.LogInformation($"Product {productId} already exists in Elasticsearch. Skipping index.");
+                        continue; // Skip indexing this product
+                    }
+
+                    // Add the product to the bulk request for indexing
+                    bulkRequest.Operations.Add(new BulkIndexOperation<AmCart.ProductSearch.API.Entities.ProductSearch>(product));
+
+                }
+                catch (Exception ex)
+                {
+
+                    throw;
+                }
             }
 
             if (bulkRequest.Operations.Count == 0)
@@ -221,55 +231,55 @@ namespace AmCart.ProductSearch.API.Services
 
 
 
-    //public class ProductDataSyncService: IProductDataSyncService
-    //{
-    //    private readonly IElasticClient _elasticClient;
-    //    private readonly IMongoCollection<Product> _productCollection;
+//public class ProductDataSyncService: IProductDataSyncService
+//{
+//    private readonly IElasticClient _elasticClient;
+//    private readonly IMongoCollection<Product> _productCollection;
 
-    //    public ProductDataSyncService(IElasticClient elasticClient, IMongoClient mongoClient, string mongoDbName, string mongoCollectionName)
-    //    {
-    //        _elasticClient = elasticClient;
+//    public ProductDataSyncService(IElasticClient elasticClient, IMongoClient mongoClient, string mongoDbName, string mongoCollectionName)
+//    {
+//        _elasticClient = elasticClient;
 
-    //        // Access the MongoDB collection for products
-    //        _productCollection = mongoClient.GetDatabase(mongoDbName).GetCollection<Product>(mongoCollectionName);
-    //    }
+//        // Access the MongoDB collection for products
+//        _productCollection = mongoClient.GetDatabase(mongoDbName).GetCollection<Product>(mongoCollectionName);
+//    }
 
-    //    // Sync MongoDB product data to Elasticsearch
-    //    public async Task SyncProductDataAsync()
-    //    {
-    //        // Fetch product data from MongoDB
-    //        var products = await FetchProductsFromMongoDb();
+//    // Sync MongoDB product data to Elasticsearch
+//    public async Task SyncProductDataAsync()
+//    {
+//        // Fetch product data from MongoDB
+//        var products = await FetchProductsFromMongoDb();
 
-    //        // Insert the products into Elasticsearch
-    //        var success = await InsertProductsIntoElasticsearch(products);
+//        // Insert the products into Elasticsearch
+//        var success = await InsertProductsIntoElasticsearch(products);
 
-    //        if (success)
-    //        {
-    //            Console.WriteLine("✅ Product data synced to Elasticsearch successfully.");
-    //        }
-    //        else
-    //        {
-    //            Console.WriteLine("❌ Error syncing product data.");
-    //        }
-    //    }
+//        if (success)
+//        {
+//            Console.WriteLine("✅ Product data synced to Elasticsearch successfully.");
+//        }
+//        else
+//        {
+//            Console.WriteLine("❌ Error syncing product data.");
+//        }
+//    }
 
-    //    private async Task<List<Product>> FetchProductsFromMongoDb()
-    //    {
-    //        // Fetch all products from the MongoDB collection
-    //        return await _productCollection.Find(FilterDefinition<Product>.Empty).ToListAsync();
-    //    }
+//    private async Task<List<Product>> FetchProductsFromMongoDb()
+//    {
+//        // Fetch all products from the MongoDB collection
+//        return await _productCollection.Find(FilterDefinition<Product>.Empty).ToListAsync();
+//    }
 
-    //    private async Task<bool> InsertProductsIntoElasticsearch(List<Product> products)
-    //    {
-    //        // Prepare bulk request to insert products into Elasticsearch
-    //        var bulkRequest = new BulkRequest("products")
-    //        {
-    //            Operations = products.Select(product => new BulkIndexOperation<Product>(product)).Cast<IBulkOperation>().ToList()
-    //        };
+//    private async Task<bool> InsertProductsIntoElasticsearch(List<Product> products)
+//    {
+//        // Prepare bulk request to insert products into Elasticsearch
+//        var bulkRequest = new BulkRequest("products")
+//        {
+//            Operations = products.Select(product => new BulkIndexOperation<Product>(product)).Cast<IBulkOperation>().ToList()
+//        };
 
-    //        var bulkResponse = await _elasticClient.BulkAsync(bulkRequest);
+//        var bulkResponse = await _elasticClient.BulkAsync(bulkRequest);
 
-    //        return bulkResponse.IsValid;
-    //    }
-    //}
+//        return bulkResponse.IsValid;
+//    }
+//}
 //}

@@ -68,7 +68,7 @@ services:
         environment:
           - ASPNETCORE_ENVIRONMENT=Development
           # - ConnectionStrings__IdentityConnection=Server=identitydb;Database=Identity;User Id=sa;Password=Pass@word123; # Use Docker secrets for password!
-          - "ConnectionStrings:IdentityDb=Server=identitydb;Database=IdentityDb;User Id=sa;Password=Pass@word123;"
+          - "ConnectionStrings:IdentityDb=Server=identitydb;Database=IdentityDb0;User Id=sa;Password=Pass@word123;TrustServerCertificate=True;"
           # - IdentityIssuer=localhost:8003
           - IdentityIssuer=amcart.identity.api
           # ... other IdentityServer environment variables (clients, secrets, signing keys, etc.) - See below
