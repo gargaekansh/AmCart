@@ -10,6 +10,7 @@ using AmCart.ProductSearch.API.AutoMapper;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Transport;
 using System;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,7 +59,27 @@ builder.Services.AddScoped<IProductDataSyncService, ProductDataSyncService>();
 
 // 🔹 Add Swagger to API Documentation
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+//builder.Services.AddSwaggerGen();
+
+// 🔹 Configure Swagger with OpenAPI
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Product Search API",
+        Version = "v1",
+        Description = "API for searching products in AmCart",
+    });
+
+    // Include XML comments (optional, requires XML doc generation)
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+});
+
 
 // 🔹 Configure CORS policy (Allow all origins, methods, and headers)
 builder.Services.AddCors(options =>
@@ -87,9 +108,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Search API v1");
-        options.RoutePrefix = string.Empty;  // Makes Swagger UI available at root URL
+        options.RoutePrefix = "swagger"; //string.Empty;  // Makes Swagger UI available at root URL
     });
 }
+
+
+//// 🔹 Ensure Swagger is enabled
+//app.UseSwagger();
+//app.UseSwaggerUI(c =>
+//{
+//    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Search API v1");
+//    c.RoutePrefix = "swagger";  // Ensure Swagger is available at /swagger
+//});
+
 
 // 🔹 Apply CORS Middleware (Use defined policy)
 app.UseCors("AllowAll");
