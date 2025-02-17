@@ -73,7 +73,8 @@ services:
           - IdentityIssuer=amcart.identity.api
           # ... other IdentityServer environment variables (clients, secrets, signing keys, etc.) - See below
         ports:
-          - "8003:80" # Or 5000:5000 if that's what your app uses
+          # - "8003:80" # Or 5000:5000 if that's what your app uses
+          - "8003:8080"
           - "8004:443" # Expose HTTPS port if configured
         volumes:
           - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro

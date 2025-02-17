@@ -33,5 +33,11 @@ namespace AmCart.Identity.API.Models
         /// Indicates whether the user wants to be remembered (i.e., stay logged in after authentication).
         /// </summary>
         public bool RememberMe { get; init; }
+
+
+        /// <summary>
+        /// The URL to redirect to after successful login.
+        /// </summary>
+        public string? ReturnUrl { get; init; } // Added ReturnUrl property
     }
 }

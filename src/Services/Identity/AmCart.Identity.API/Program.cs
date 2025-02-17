@@ -47,8 +47,10 @@ builder.Services.AddIdentityServer(options =>
     //options.SupportedGrantTypes.Add("urn:ietf:params:oauth:grant-type:token-exchange");
 
 })
+     .AddProfileService<ProfileService>()   // Register your custom profile service
 .AddDeveloperSigningCredential()  // Use a real certificate in production
 .AddAspNetIdentity<ApplicationUser>()
+
 .AddInMemoryIdentityResources(Config.IdentityResources)
 .AddInMemoryApiResources(Config.ApiResources)
 .AddInMemoryApiScopes(Config.ApiScopes)
@@ -121,7 +123,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Identity API v1");
-        options.RoutePrefix = string.Empty; // Swagger UI at root
+        //options.RoutePrefix = string.Empty; // Swagger UI at root
+        options.RoutePrefix = "swagger"; //string.Empty;  // Makes Swagger UI available at root URL
     });
 }
 
