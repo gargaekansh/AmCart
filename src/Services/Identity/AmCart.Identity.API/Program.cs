@@ -12,23 +12,83 @@ using HealthChecks.UI.Client;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
+using IdentityServer4.Services;
+using IdentityServer4.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers(); // Add this line!
 
+
+//// In this system we are using Nginx Ingress, therefore we need to resend the headers into this service
+//#region ReverseProxy - header forwarding
+//builder.Services.Configure<ForwardedHeadersOptions>(options =>
+//{
+//    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+//    // Everything what was configured implicitly, we need to reset.
+//    options.KnownNetworks.Clear();
+//    options.KnownProxies.Clear();
+//});
+//#endregion
+
+
 // 🔹 Configure Services
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-builder.Services.AddScoped<ITokenService, TokenService>();
+////builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddTransient<IProfileService, ProfileService>();
+builder.Services.AddTransient<ITokenService, DefaultTokenService>();
+builder.Services.AddTransient<IResourceOwnerPasswordValidator, ResourceOwnerPasswordValidator>();
+builder.Services.AddTransient<IExtensionGrantValidator, TokenExchangeExtensionGrantValidator>(); 
 
 // 🔹 Configure Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("IdentityDb")));
 
+//builder.Services.AddDbContext<PersistedGrantDbContext>(options =>
+//    options.UseSqlServer(builder.Configuration.GetConnectionString("IdentityDb")));
+
+
+var migrationsAssembly = typeof(Program).GetTypeInfo().Assembly.GetName().Name;
+var connectionString = builder.Configuration.GetConnectionString("IdentityDb");
+
 // 🔹 Configure Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+
+//// 🔹 Configure IdentityServer
+//builder.Services.AddIdentityServer(options =>
+//{
+//    options.Events.RaiseErrorEvents = true;
+//    options.Events.RaiseInformationEvents = true;
+//    options.Events.RaiseFailureEvents = true;
+//    options.Events.RaiseSuccessEvents = true;
+//    options.EmitStaticAudienceClaim = true;
+//    //options.IssuerUri = "AmCart";
+//    options.EmitStaticAudienceClaim = true;
+
+//    //options.SupportedGrantTypes = options.SupportedGrantTypes.Append("urn:ietf:params:oauth:grant-type:token-exchange").ToList();  // Append is usually safer
+
+//    //// Now you can access SupportedGrantTypes
+//    //options.SupportedGrantTypes.Add("urn:ietf:params:oauth:grant-type:token-exchange");
+
+//})
+//     .AddProfileService<ProfileService>()   // Register your custom profile service
+//.AddDeveloperSigningCredential()  // Use a real certificate in production
+//.AddAspNetIdentity<ApplicationUser>()
+//.AddResourceOwnerValidator<ResourceOwnerPasswordValidator>()
+//.AddInMemoryIdentityResources(Config.IdentityResources)
+//.AddInMemoryApiResources(Config.ApiResources)
+//.AddInMemoryApiScopes(Config.ApiScopes)
+//.AddInMemoryClients(Config.Clients(builder.Configuration)
+
+
+
+
+//);
+
 
 // 🔹 Configure IdentityServer
 builder.Services.AddIdentityServer(options =>
@@ -38,25 +98,48 @@ builder.Services.AddIdentityServer(options =>
     options.Events.RaiseFailureEvents = true;
     options.Events.RaiseSuccessEvents = true;
     options.EmitStaticAudienceClaim = true;
-    //options.IssuerUri = "AmCart";
-    options.IssuerUri = builder.Configuration["IdentityIssuer"];
-
-    //options.SupportedGrantTypes = options.SupportedGrantTypes.Append("urn:ietf:params:oauth:grant-type:token-exchange").ToList();  // Append is usually safer
-
-    //// Now you can access SupportedGrantTypes
-    //options.SupportedGrantTypes.Add("urn:ietf:params:oauth:grant-type:token-exchange");
-
 })
-     .AddProfileService<ProfileService>()   // Register your custom profile service
-.AddDeveloperSigningCredential()  // Use a real certificate in production
+.AddProfileService<ProfileService>()   // Register custom profile service
+.AddDeveloperSigningCredential()  // 🔒 Use a real certificate in production
 .AddAspNetIdentity<ApplicationUser>()
-
+.AddResourceOwnerValidator<ResourceOwnerPasswordValidator>()
 .AddInMemoryIdentityResources(Config.IdentityResources)
 .AddInMemoryApiResources(Config.ApiResources)
 .AddInMemoryApiScopes(Config.ApiScopes)
-.AddInMemoryClients(Config.Clients(builder.Configuration)
 
+.AddInMemoryClients(Config.Clients(builder.Configuration))
+.AddExtensionGrantValidator<TokenExchangeExtensionGrantValidator>()
+
+
+                //// 🔹 Add Operational & Configuration Store (for Persisted Grants)
+                //// this adds the config data from DB (clients, resources)
+                //.AddConfigurationStore(options =>
+                //{
+                //    options.ConfigureDbContext = builder => builder.UseSqlServer(connectionString,
+                //    sqlServerOptionsAction: sqlOptions =>
+                //    {
+                //        sqlOptions.MigrationsAssembly(migrationsAssembly);
+                //        sqlOptions.EnableRetryOnFailure(maxRetryCount: 15, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
+                //    });
+                //})
+                // this adds the operational data from DB (codes, tokens, consents)
+                .AddOperationalStore(options =>
+                {
+                    options.ConfigureDbContext = builder => builder.UseSqlServer(connectionString,
+                    sqlServerOptionsAction: sqlOptions =>
+                    {
+                        sqlOptions.MigrationsAssembly(migrationsAssembly);
+                        sqlOptions.EnableRetryOnFailure(maxRetryCount: 15, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
+                    });
+
+                    // 🔄 Enable token cleanup
+                    options.EnableTokenCleanup = true;
+                    options.TokenCleanupInterval = 3600; // Cleanup every 1 hour
+                }
 );
+
+
+
 
 
 

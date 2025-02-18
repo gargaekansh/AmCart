@@ -83,6 +83,12 @@ namespace AmCart.Identity.API.Configuration
 
         public static IEnumerable<Client> Clients(IConfiguration configuration)
         {
+            var jwtSettings = new JwtSettings();
+            configuration.GetSection("JwtSettings").Bind(jwtSettings);
+
+            var AbsoluteRefreshTokenLifetime = jwtSettings.RememberMeTokenExpirationDays * 86400; // Convert days to seconds
+           var SlidingRefreshTokenLifetime = jwtSettings.TokenExpirationHours * 3600;
+
             return new Client[]
             { 
         // Client for machine to machine authentication (no UI interaction, client credentials flow)
@@ -208,18 +214,18 @@ namespace AmCart.Identity.API.Configuration
             }
         },
 
-        // Angular client with OAuth2 Authorization Code flow and support for offline access and PKCE
+    //    // Angular client with OAuth2 Authorization Code flow and support for offline access and PKCE
         new Client
         {
             ClientName = "Shopping Angular Client",
             ClientId = "angular-client",
-            AllowedGrantTypes = GrantTypes.Code, // Authorization Code flow
-            RedirectUris = new List<string>
-            {
-                // Redirect URI for the Angular application after login
-                $"{configuration["WebClientUrls:Angular"]}/home"
-            },
-            RequirePkce = true, // Require PKCE for added security
+                    AllowedGrantTypes = GrantTypes.Code,
+                    RedirectUris = new List<string>
+                    {
+                        $"{configuration["WebClientUrls:Angular"] }/home"
+                        //$"{configuration["WebClientUrls:Angular"]}/silent-refresh.html"
+                    },
+                    RequirePkce = true,
             AllowAccessTokensViaBrowser = true, // Allow access tokens to be passed via the browser
             AllowOfflineAccess = true, // Allow refresh tokens
             AlwaysIncludeUserClaimsInIdToken = true, // Always include user claims in ID token
@@ -231,13 +237,17 @@ namespace AmCart.Identity.API.Configuration
                 IdentityServerConstants.StandardScopes.OfflineAccess,
                 "roles",
                 "shoppinggateway.fullaccess",
-                "shoppingaggregator.fullaccess"
+                "shoppingaggregator.fullaccess",
+                "catalogapi.fullaccess"  //I have added 
             },
             AllowedCorsOrigins = { $"{configuration["WebClientUrls:Angular"]}" }, // CORS allowed origins for Angular client
+
+
             RequireClientSecret = false, // No client secret required for Angular client
+          
             PostLogoutRedirectUris = new List<string> { $"{configuration["WebClientUrls:Angular"]}/home" }, // Redirect URI after logout
             RequireConsent = false, // No consent required for this client
-            AccessTokenLifetime = 60 // Access token lifetime (in seconds)
+            AccessTokenLifetime = 300 // Access token lifetime (in seconds)
         },
 
         // Swagger UI clients for various APIs (catalog, basket, order, etc.)
@@ -318,7 +328,35 @@ namespace AmCart.Identity.API.Configuration
             {
                 "shoppingaggregator.fullaccess"
             }
-        }
+        },
+                new Client  //test 
+        {
+            ClientName = "Shopping Resource Owner Password Client",
+            ClientId = "shopping_password_client",
+            AllowedGrantTypes = GrantTypes.ResourceOwnerPassword, // Resource owner password flow
+            ClientSecrets =
+            {
+                new Secret(configuration["ClientSecrets:ShoppingPasswordClientSecret"].Sha256()) // Reference secret from appsettings.json
+            },
+            AllowedScopes = { "openid", "profile", "roles", "catalogapi.fullaccess" },
+            AllowOfflineAccess = true,
+
+        },
+
+                new Client //test
+{
+    ClientId = "node-client",
+    ClientName = "Node Client",
+
+    AllowedGrantTypes = GrantTypes.ResourceOwnerPassword, // ✅ Ensure ROPC is enabled
+    ClientSecrets = { new Secret("NodeClientSecret".Sha256()) }, // ✅ Ensure secret is hashed
+    AllowedScopes = { "openid", "profile", "roles", "offline_access", "shoppinggateway.fullaccess", "catalogapi.fullaccess" },
+    AllowOfflineAccess = true, // ✅ Enable refresh tokens (important for remember_me)
+    RequireClientSecret = true, // ✅ Required if using client secret
+        RefreshTokenExpiration = TokenExpiration.Sliding,
+        AbsoluteRefreshTokenLifetime = jwtSettings.RememberMeTokenExpirationDays * 86400, // Convert days to seconds
+        SlidingRefreshTokenLifetime = jwtSettings.TokenExpirationHours * 3600, // Convert hours to seconds
+}
             };
         }
 

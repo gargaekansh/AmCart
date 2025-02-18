@@ -13,10 +13,10 @@ namespace AmCart.Identity.API.Services
 {
 
 
-    public class TokenService : ITokenService
+    public class TokenService //: ITokenService
     {
         private readonly JwtSettings _jwtSettings;
-
+        
         public TokenService(IOptions<JwtSettings> jwtSettings)
         {
             _jwtSettings = jwtSettings.Value; // Access the settings from IOptions

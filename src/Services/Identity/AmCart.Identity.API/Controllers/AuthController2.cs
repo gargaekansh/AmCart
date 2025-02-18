@@ -18,6 +18,14 @@ using System.Security.Claims;
 using IdentityServer4.Test;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using IdentityModel;
+using IdentityServer4.Validation;
+using System.IdentityModel.Tokens.Jwt;
+using IdentityServer4.Configuration;
+using AmCart.Identity.API.Services;
+using System.Collections.Specialized;
+using System;
+using System.Collections.Specialized; // Add this for NameValueCollection
 
 namespace AmCart.Identity.API.Controllers
 {
@@ -36,6 +44,8 @@ namespace AmCart.Identity.API.Controllers
         private readonly IAuthenticationSchemeProvider _schemeProvider;
         private readonly IEventService _events;
         private readonly JwtSettings _jwtSettings;
+        private readonly ITokenService _tokenService;
+
         /// <summary>
         /// Constructor for AuthController.
         /// </summary>
@@ -46,7 +56,8 @@ namespace AmCart.Identity.API.Controllers
                               IClientStore clientStore,
                               IAuthenticationSchemeProvider schemeProvider,
                               IEventService events,
-                              IOptions<JwtSettings> jwtSettings)
+                              IOptions<JwtSettings> jwtSettings,
+                              ITokenService tokenService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -56,6 +67,7 @@ namespace AmCart.Identity.API.Controllers
             _schemeProvider = schemeProvider;
             _events = events;
             _jwtSettings = jwtSettings.Value; // Access the settings from IOptions
+            _tokenService = tokenService;
         }
 
 
@@ -126,6 +138,9 @@ namespace AmCart.Identity.API.Controllers
                 return BadRequest(ModelState);
             }
 
+            // check if we are in the context of an authorization request
+            var context = await _interaction.GetAuthorizationContextAsync(model.ReturnUrl);
+
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
             {
@@ -133,16 +148,16 @@ namespace AmCart.Identity.API.Controllers
                 return Unauthorized("Invalid email or password.");
             }
 
-                var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: false);
-                if (result.Succeeded)
-                {
-                    return await HandleSuccessfulLogin(user, model.ReturnUrl, model.RememberMe);
-                }
-                else
-                {
-                    _logger.LogWarning("Login failed for '{Email}'. Incorrect credentials.", model.Email);
-                    return Unauthorized("Invalid email or password.");
-                }
+            var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: false);
+            if (result.Succeeded)
+            {
+                return await HandleSuccessfulLogin(user, model.ReturnUrl, model.RememberMe, context);
+            }
+            else
+            {
+                _logger.LogWarning("Login failed for '{Email}'. Incorrect credentials.", model.Email);
+                return Unauthorized("Invalid email or password.");
+            }
 
         }
 
@@ -160,60 +175,242 @@ namespace AmCart.Identity.API.Controllers
         }
 
 
-        private async Task<IActionResult> HandleSuccessfulLogin(ApplicationUser user, string? returnUrl, bool rememberMe)
-        {
-            // 1. Get User Roles (for claims)
-            var roles = await _userManager.GetRolesAsync(user);
 
-            // 2. Create Claims
+
+
+
+        private async Task<IActionResult> HandleSuccessfulLogin(ApplicationUser user, string? returnUrl, bool rememberMe, AuthorizationRequest? context)
+        {
+            // Sign in the user with Remember Me
+            await _signInManager.SignInAsync(user, rememberMe);
+
+            if (context == null)
+            {
+                return BadRequest("Invalid authorization request.");
+            }
+
+            // Retrieve the client configuration from IdentityServer
+            var client = await _clientStore.FindEnabledClientByIdAsync(context.Client.ClientId);
+            if (client == null)
+            {
+                return BadRequest("Invalid client configuration.");
+            }
+
+            // Create claims for the authenticated user
             var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, user.UserName), // Or user.Email
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.NameIdentifier, user.Id) // This is important!
-        };
+    {
+        new Claim(JwtClaimTypes.Subject, user.Id),
+        new Claim(JwtClaimTypes.Name, user.UserName),
+        new Claim(JwtClaimTypes.Email, user.Email),
+    };
 
+            // Add roles if available
+            var roles = await _userManager.GetRolesAsync(user);
             foreach (var role in roles)
             {
-                claims.Add(new Claim(ClaimTypes.Role, role));
+                claims.Add(new Claim("role", role));
             }
 
-            // 3. Create ClaimsIdentity
-            var identity = new ClaimsIdentity(claims, IdentityConstants.ApplicationScheme);
+            var identity = new ClaimsIdentity(claims, IdentityServerConstants.DefaultCookieAuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
 
-            // 4. Create ClaimsPrincipal
-            var principal = new ClaimsPrincipal(identity); // Create the ClaimsPrincipal
+            // ✅ Step 1: Get Token Expiration from Configuration
+            var tokenExpiration = rememberMe
+                ? TimeSpan.FromDays(_jwtSettings.RememberMeTokenExpirationDays) // Longer token lifetime
+                : TimeSpan.FromHours(_jwtSettings.TokenExpirationHours); // Shorter token lifetime
 
-            // 5. Create AuthenticationProperties (for RememberMe)
-            var props = new AuthenticationProperties();
-
-            // Set expiration time for the token
-            var expiration = rememberMe
-                ? DateTime.Now.AddDays(_jwtSettings.RememberMeTokenExpirationDays)
-                : DateTime.Now.AddHours(_jwtSettings.TokenExpirationHours);
-
-            if (rememberMe)
+            var tokenRequest = new TokenCreationRequest
             {
-                props.IsPersistent = true;
-                props.ExpiresUtc = expiration; //DateTimeOffset.UtcNow.AddDays(30); // Example: 30 days
-            }
+                Subject = principal,
+                ValidatedRequest = new ValidatedRequest
+                {
+                    Client = client,
+                    Raw = new NameValueCollection { { "client_id", client.ClientId } },
+                    Options = new IdentityServerOptions()
+                },
+                ValidatedResources = new ResourceValidationResult
+                {
+                    Resources = new Resources(
+                        identityResources: Config.IdentityResources,
+                        apiResources: Config.ApiResources,
+                        apiScopes: Config.ApiScopes)
+                },
+                IncludeAllIdentityClaims = true
+            };
 
-            // 6. Sign In (Correct way)
-            await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal, props); // Correct SignInAsync usage
+            // ✅ Step 2: Generate Token
+            var token = await _tokenService.CreateAccessTokenAsync(tokenRequest);
 
-
-            // 7. Raise the UserLoginSuccessEvent (Correct way)
-            await _events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.Id.ToString(), "local")); // Or your authentication method
-
-            // 8. Handle Return URL or Redirect
-            var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
-            if (context != null)
+            if (token == null)
             {
-                return Redirect(context.RedirectUri);
+                return Unauthorized("Failed to create access token.");
             }
 
-            return Ok(new { message = "User logged in successfully." });
+            // ✅ Step 3: Apply Custom Expiration
+            token.Lifetime = (int)tokenExpiration.TotalSeconds;
+
+            // ✅ Step 4: Convert Token to JWT
+            var securityToken = await _tokenService.CreateSecurityTokenAsync(token);
+
+            var result = new
+            {
+                AccessToken = securityToken, // ✅ Correct JWT token string
+                ExpiresIn = token.Lifetime // ✅ Token expiration time
+            };
+
+            // Redirect user if return URL is valid, otherwise return a JSON response
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return Ok(result);
         }
+
+
+
+
+
+
+
+
+
+        //    private async Task<IActionResult> HandleSuccessfulLogin(ApplicationUser user, string? returnUrl, bool rememberMe, AuthorizationRequest? context)
+        //    {
+        //        // 1️⃣ Get User Roles
+        //        var roles = await _userManager.GetRolesAsync(user);
+
+        //        // 2️⃣ Create Claims for the Token
+        //        var claims = new List<Claim>
+        //{
+        //    new Claim(JwtClaimTypes.Subject, user.Id),  // ✅ IdentityServer expects 'sub' claim
+        //    new Claim(JwtClaimTypes.Name, user.UserName ?? user.Email), // ✅ Standard name claim
+        //    new Claim(JwtClaimTypes.Email, user.Email) // ✅ Standard email claim
+        //};
+
+        //        // 3️⃣ Add Role Claims (Important for Role-Based Authorization)
+        //        foreach (var role in roles)
+        //        {
+        //            claims.Add(new Claim(JwtClaimTypes.Role, role)); // ✅ Ensuring role is included
+        //        }
+
+        //        // 4️ Determine Expiration Time Based on Remember Me
+        //        var tokenExpiration = rememberMe
+        //            ? TimeSpan.FromDays(_jwtSettings.RememberMeTokenExpirationDays) // Longer token lifetime
+        //            : TimeSpan.FromHours(_jwtSettings.TokenExpirationHours); // Shorter token lifetime
+
+        //        // 5️ Create a Fake Validated Request (Required by IdentityServer)
+        //        var validatedRequest = new ValidatedTokenRequest
+        //        {
+        //            Client = context?.Client ?? new Client { ClientId = "default-client" } // Fallback to default client
+        //        };
+
+        //        // 6️ Create Token Request
+        //        var tokenRequest = new TokenCreationRequest
+        //        {
+        //            Subject = new ClaimsPrincipal(new ClaimsIdentity(claims, IdentityServerConstants.DefaultCookieAuthenticationScheme)), // Attach Claims
+        //            ValidatedRequest = validatedRequest, // Use the validated request
+        //            IncludeAllIdentityClaims = true // Ensures all identity claims are included
+        //        };
+
+        //        // 7️ Generate Access Token Using IdentityServer4
+        //        var accessToken = await _tokenService.CreateAccessTokenAsync(tokenRequest);
+
+        //        // 8️ Convert IdentityServer4 Token to JWT String
+        //        var jwtToken = await _tokenService.CreateSecurityTokenAsync(accessToken); // ✅ Correct way to generate JWT
+
+        //        // 9️⃣ Raise IdentityServer Login Success Event
+        //        await _events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.Id, user.UserName, clientId: context?.Client.ClientId));
+
+        //        // 🔟 Handle Redirect (OAuth2 Login Flow)
+        //        if (context != null)
+        //        {
+        //            return Redirect(context.RedirectUri); // Redirect the user if an authorization request exists
+        //        }
+
+        //        // 🔟 Return the Token in API Response
+        //        return Ok(new
+        //        {
+        //            access_token = jwtToken, // ✅ Correctly formatted JWT
+        //            expires_in = accessToken.Lifetime, // Expiration in seconds
+        //            token_type = "Bearer" // OAuth2-compliant token type
+        //        });
+        //    }
+
+
+
+
+
+
+
+        //private async Task<IActionResult> HandleSuccessfulLogin(ApplicationUser user, string? returnUrl, bool rememberMe, AuthorizationRequest? context)
+        //{
+
+
+        //    // 1. Get User Roles (for claims)
+        //    var roles = await _userManager.GetRolesAsync(user);
+
+        //    // 2. Create Claims
+        //    var claims = new List<Claim>
+        //{
+        //    new Claim(ClaimTypes.Name, user.UserName), // Or user.Email
+        //    new Claim(ClaimTypes.Email, user.Email),
+        //    new Claim(ClaimTypes.NameIdentifier, user.Id), // This is important!
+
+        //new Claim(JwtClaimTypes.Subject, user.Id),  // ✅ IdentityServer expects 'sub' claim
+        //new Claim(JwtClaimTypes.Name, user.UserName ?? user.Email), // ✅ Use IdentityServer claim types
+        //new Claim(JwtClaimTypes.Email, user.Email)
+        //};
+
+        //    foreach (var role in roles)
+        //    {
+        //        claims.Add(new Claim(JwtClaimTypes.Role, role)); // ✅ Ensuring role is included
+        //    }
+
+        //    // 3. Create ClaimsIdentity
+        //    var identity = new ClaimsIdentity(claims, IdentityConstants.ApplicationScheme);
+
+        //    // 4. Create ClaimsPrincipal
+        //    var principal = new ClaimsPrincipal(identity); // Create the ClaimsPrincipal
+
+        //    // 5. Create AuthenticationProperties (for RememberMe)
+        //    var props = new AuthenticationProperties();
+
+        //    // Set expiration time for the token
+        //    var expiration = rememberMe
+        //        ? DateTime.Now.AddDays(_jwtSettings.RememberMeTokenExpirationDays)
+        //        : DateTime.Now.AddHours(_jwtSettings.TokenExpirationHours);
+
+        //    if (rememberMe)
+        //    {
+        //        props.IsPersistent = true;
+        //        props.ExpiresUtc = expiration; //DateTimeOffset.UtcNow.AddDays(30); // Example: 30 days
+        //    }
+
+        //    // issue authentication cookie with subject ID and username
+        //    var isuser = new IdentityServerUser(user.Id) { DisplayName = user.UserName };
+
+        //    // 6. Sign In (Correct way)
+        //    //await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal, props); // Correct SignInAsync usage
+
+        //    await HttpContext.SignInAsync(IdentityServerConstants.DefaultCookieAuthenticationScheme, principal, props); // ✅ Fix SignIn scheme
+
+
+        //    // 7. Raise the UserLoginSuccessEvent (Correct way)
+        //    //await _events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.Id.ToString(), "local")); // Or your authentication method
+
+        //    await _events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.Id, user.UserName, clientId: context?.Client.ClientId));
+
+        //    // 8. Handle Return URL or Redirect
+        //    // var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
+
+        //    if (context != null)
+        //    {
+        //        return Redirect(context.RedirectUri);
+        //    }
+
+        //    return Ok(new { message = "User logged in successfully." });
+        //}
 
     }
 }
