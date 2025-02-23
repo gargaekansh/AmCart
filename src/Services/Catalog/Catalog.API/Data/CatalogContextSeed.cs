@@ -1,4 +1,5 @@
 ﻿using Catalog.API.Entities;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
@@ -9,21 +10,28 @@ namespace Catalog.API.Data
 {
     public class CatalogContextSeed
     {
-        public static void SeedData(IMongoCollection<Product> productCollection)
+        public static void SeedData(IMongoCollection<Product> productCollection, ILogger<CatalogContextSeed> logger)
         {
             bool existProduct = productCollection.Find(p => true).Any();
             if (!existProduct)
             {
                 var products = GetPreconfiguredProducts();
+                var productsCount = products.Count();
                 try
                 {
+                    logger.LogInformation("Seeding product data into the database...");
                     productCollection.InsertMany(products);
+                    logger.LogInformation($"Successfully seeded {0} products.", productsCount);
                 }
                 catch (Exception ex)
                 {
-
-                    throw ex;
+                    logger.LogError(ex, "An error occurred while seeding the database.");
+                    throw;
                 }
+            }
+            else
+            {
+                logger.LogWarning("Product collection already contains data. Skipping seeding.");
             }
         }
 

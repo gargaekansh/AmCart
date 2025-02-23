@@ -24,6 +24,13 @@ namespace Catalog.API.Controllers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        [AllowAnonymous]
+        [HttpGet("test")]
+        public ActionResult<string> TestEndpoint()
+        {
+            return "Test endpoint is working";
+        }
+
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<Product>), (int)HttpStatusCode.OK)]
         [AllowAnonymous]

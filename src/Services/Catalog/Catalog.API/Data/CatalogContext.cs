@@ -3,9 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Catalog.API.Data
 {
@@ -17,16 +14,31 @@ namespace Catalog.API.Data
             _logger = logger;
             try
             {
-                var client = new MongoClient(configuration.GetValue<string>("DatabaseSettings:ConnectionString"));
-                var database = client.GetDatabase(configuration.GetValue<string>("DatabaseSettings:DatabaseName"));
+                string connectionString = configuration.GetValue<string>("DatabaseSettings:ConnectionString");
+                string databaseName = configuration.GetValue<string>("DatabaseSettings:DatabaseName");
+                string collectionName = configuration.GetValue<string>("DatabaseSettings:CollectionName");
 
-                Products = database.GetCollection<Product>(configuration.GetValue<string>("DatabaseSettings:CollectionName"));
-               // CatalogContextSeed.SeedData(Products);
+                _logger.LogInformation($"Connection String: {connectionString}");
+                _logger.LogInformation($"Database Name: {databaseName}");
+                _logger.LogInformation($"Collection Name: {collectionName}");
+
+                _logger.LogInformation("Connecting to MongoDB...");
+                var client = new MongoClient(connectionString);
+                _logger.LogInformation("Connected to MongoDB client.");
+
+                _logger.LogInformation("Getting database...");
+                var database = client.GetDatabase(databaseName);
+                _logger.LogInformation("Database retrieved.");
+
+                _logger.LogInformation("Getting collection...");
+                Products = database.GetCollection<Product>(collectionName);
+                _logger.LogInformation("Collection retrieved.");
+                // CatalogContextSeed.SeedData(Products);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Exception in CatalogContext");
-                throw ;
+                throw;
             }
         }
 
