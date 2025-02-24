@@ -120,6 +120,7 @@ case $SERVICE in
     ;;
   amcart.catalog.api)
     start_service "amcart.catalog.api" "docker run -d --name amcart.catalog.api --restart always --network amcart_network -p 8000:8080 -e 'ASPNETCORE_ENVIRONMENT=Development' -e 'DatabaseSettings:ConnectionString=mongodb://catalogdb1:27017' amcart.catalog.api:1.0.1"
+	# start_service "amcart.catalog.api" "docker run -d --name amcart.catalog.api --restart always --network amcart_network -p 8000:8080 -e 'ASPNETCORE_ENVIRONMENT=Development' -e 'DatabaseSettings:ConnectionString=$COSMOSDB_CONNECTION_STRING' amcart.catalog.api:1.0.1"
     ;;
   amcart.identity.api)
     start_service "amcart.identity.api" "docker run -d --name amcart.identity.api --restart always --network amcart_network -p 8003:8080 -p 8004:443 -e 'ASPNETCORE_ENVIRONMENT=Development' -e 'ConnectionStrings:IdentityDb=Server=identitydb;Database=IdentityDb0;User Id=sa;Password=Pass@word123;TrustServerCertificate=True;' amcart.identity.api"

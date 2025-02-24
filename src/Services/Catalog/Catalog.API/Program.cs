@@ -1,4 +1,4 @@
-//using Microsoft.AspNetCore.Hosting;
+﻿//using Microsoft.AspNetCore.Hosting;
 //using Microsoft.Extensions.Configuration;
 //using Microsoft.Extensions.Hosting;
 //using Microsoft.Extensions.Logging;
@@ -194,6 +194,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using Catalog.API.Authorization;
 using Catalog.API.Data;
+using Catalog.API.Entities;
 using Catalog.API.Filters;
 using Catalog.API.Repositories;
 using Catalog.API.Repositories.Interfaces;
@@ -351,6 +352,24 @@ void SeedDatabase(WebApplication app, ILogger logger) // Receive the logger here
         // Get the logger for CatalogContextSeed from the service provider
         var seedLogger = services.GetRequiredService<ILogger<CatalogContextSeed>>();
 
+        // Check if index on 'category' exists before creating it
+        var existingIndexes = productCollection.Indexes.List().ToList();
+        bool categoryIndexExists = existingIndexes
+            .Any(index => index["key"].AsBsonDocument.Contains("category"));
+
+        if (!categoryIndexExists)
+        {
+            var indexKeysDefinition = Builders<Product>.IndexKeys.Ascending(p => p.Category);
+            var indexModel = new CreateIndexModel<Product>(indexKeysDefinition);
+            productCollection.Indexes.CreateOne(indexModel);
+            logger.LogInformation("✅ Index on 'category' field created.");
+        }
+        else
+        {
+            logger.LogInformation("🔹 Index on 'category' already exists.");
+        }
+
+        //  Check if the collection is empty before seeding data
 
         // Check if the collection is empty, and seed data if so
         if (productCollection != null && !productCollection.AsQueryable().Any())
