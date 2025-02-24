@@ -14,7 +14,11 @@ namespace Catalog.API.Data
             _logger = logger;
             try
             {
-                string connectionString = configuration.GetValue<string>("DatabaseSettings:ConnectionString");
+               // string connectionString = configuration.GetValue<string>("DatabaseSettings:ConnectionString");
+
+                var connectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING")
+                      ?? configuration.GetValue<string>("DatabaseSettings:ConnectionString");
+
                 string databaseName = configuration.GetValue<string>("DatabaseSettings:DatabaseName");
                 string collectionName = configuration.GetValue<string>("DatabaseSettings:CollectionName");
 

@@ -361,3 +361,6 @@ src/**/bin/
 *.user
 *.log
 *.vs/
+
+# Ignore environment variable files
+.env

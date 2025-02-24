@@ -359,7 +359,8 @@ void SeedDatabase(WebApplication app, ILogger logger) // Receive the logger here
 
         if (!categoryIndexExists)
         {
-            var indexKeysDefinition = Builders<Product>.IndexKeys.Ascending(p => p.Category);
+          var indexKeysDefinition = Builders<Product>.IndexKeys.Ascending(p => p.Category);
+            //  var indexKeysDefinition = Builders<Product>.IndexKeys.Hashed(p => p.Category);
             var indexModel = new CreateIndexModel<Product>(indexKeysDefinition);
             productCollection.Indexes.CreateOne(indexModel);
             logger.LogInformation("✅ Index on 'category' field created.");
