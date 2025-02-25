@@ -1,5 +1,7 @@
 #!/bin/bash
 
+   #  start_service "amcart.catalog.api" "docker run -d --name amcart.catalog.api --restart always --network amcart_network -p 8000:8080 -e 'ASPNETCORE_ENVIRONMENT=Development' -e 'DatabaseSettings:ConnectionString=mongodb://catalogdb1:27017' amcart.catalog.api:1.0.1"
+   #  start_service "amcart.catalog.api" "docker run -d --name amcart.catalog.api --restart always --network amcart_network -p 8000:8080 -e 'ASPNETCORE_ENVIRONMENT=Development' -e 'DatabaseSettings:ConnectionString=$COSMOSDB_CONNECTION_STRING' amcart.catalog.api:1.0.2"
 
 # /mnt/c/D/Private/Nagarro/NagarroTraining/Nagp24/ECom/AmCart/DeploymentScripts
 
@@ -119,10 +121,7 @@ case $SERVICE in
     start_service "kibana" "docker run -d --name kibana --restart always --network amcart_network -p 5601:5601 kibana:8.5.0"
     ;;
   amcart.catalog.api)
-   #  start_service "amcart.catalog.api" "docker run -d --name amcart.catalog.api --restart always --network amcart_network -p 8000:8080 -e 'ASPNETCORE_ENVIRONMENT=Development' -e 'DatabaseSettings:ConnectionString=mongodb://catalogdb1:27017' amcart.catalog.api:1.0.1"
-   #  start_service "amcart.catalog.api" "docker run -d --name amcart.catalog.api --restart always --network amcart_network -p 8000:8080 -e 'ASPNETCORE_ENVIRONMENT=Development' -e 'DatabaseSettings:ConnectionString=$COSMOSDB_CONNECTION_STRING' amcart.catalog.api:1.0.2"
 	  start_service "amcart.catalog.api" "docker run -d --name amcart.catalog.api --restart always --network amcart_network -p 8000:8080 --env-file ../src/Services/Catalog/Catalog.API/.env amcart.catalog.api:1.0.2"
-
     ;;
   amcart.identity.api)
     start_service "amcart.identity.api" "docker run -d --name amcart.identity.api --restart always --network amcart_network -p 8003:8080 -p 8004:443 -e 'ASPNETCORE_ENVIRONMENT=Development' -e 'ConnectionStrings:IdentityDb=Server=identitydb;Database=IdentityDb0;User Id=sa;Password=Pass@word123;TrustServerCertificate=True;' amcart.identity.api"
