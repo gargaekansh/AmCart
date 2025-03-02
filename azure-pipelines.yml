@@ -1,5 +1,4 @@
-# Docker
-# Build a Docker image
+# Docker - Build multiple Docker images
 # https://docs.microsoft.com/azure/devops/pipelines/languages/docker
 
 trigger:
@@ -11,25 +10,44 @@ resources:
 variables:
   tag: '$(Build.BuildId)'
   acrRegistry: 'nagp2024amcart0test0acr0.azurecr.io' # Replace with your ACR name
-  imageRepository: 'amcart.catalog.api' # Replace with your desired image name
-  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile' # Path to docker file
-  containerRegistry: 'ServiceConnectionDockerRegistryAmcart0Test0'
+  containerRegistryConnectionString: 'ServiceConnectionDockerRegistryAmcart0Test0' # Replace with User-Managed Identity Service Connection
+  azureSubscriptionConnectionString: 'ServiceConnectionAmcart0Test0' # Replace with your ARM connection name
 
 stages:
 - stage: Build
-  displayName: Build image
+  displayName: Build images
   jobs:
-  - job: Build
-    displayName: Build
+  - job: BuildImages
+    displayName: Build Images
     pool:
       vmImage: ubuntu-latest
     steps:
-    - task: Docker@2
-      displayName: Build and push an image to container registry
+    - task: DockerInstaller@0
+      displayName: 'Install Docker'
       inputs:
-        command: 'buildAndPush'
-        repository: '$(acrRegistry)/$(imageRepository)'
-        dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
-        containerRegistry: '$(containerRegistry)' # Replace with your service connection name
-        tags: '$(tag)'
-        buildContext: '$(Build.SourcesDirectory)' # Set the build context to the root
+        dockerVersion: '17.09.0-ce'
+    - task: AzureCLI@2
+      displayName: 'ACR Login'
+      inputs:
+        azureSubscription: '$(azureSubscriptionConnectionString)' # Replace with your ARM connection name
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az acr login --name $(acrRegistry)'
+    - script: |
+        SERVICES=(
+          "Catalog.API"
+          "Service2" # Replace with your other service names
+          "Service3" # Replace with your other service names
+        )
+        for SERVICE in "${SERVICES[@]}"; do
+          echo "Building Docker image for $SERVICE..."
+          dockerfilePath="src/Services/$SERVICE/Dockerfile"
+          buildContext="src/Services/$SERVICE"
+          imageRepository="amcart.$SERVICE" # Creates unique repo name
+          docker build -f "$dockerfilePath" -t "$(acrRegistry)/$imageRepository:$(tag)" "$buildContext"
+          docker push "$(acrRegistry)/$imageRepository:$(tag)"
+        done
+      displayName: Build and push multiple images
+      env:
+        ACR_REGISTRY: '$(acrRegistry)'
+        BUILD_TAG: '$(tag)'
