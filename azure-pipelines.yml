@@ -39,8 +39,8 @@ stages:
         SERVICE_IMAGE_MAPPINGS="$(serviceImageMappings)"
         SERVICES=(
           "Catalog/Catalog.API"
-          "Service2"
-          "Service3"
+          # "Service2"
+          # "Service3"
         )
         for SERVICE in "${SERVICES[@]}"; do
           echo "Building Docker image for $SERVICE..."
@@ -52,7 +52,7 @@ stages:
             KEY=$(echo "$PAIR" | cut -d '=' -f 1)
             VALUE=$(echo "$PAIR" | cut -d '=' -f 2)
             echo "KEY: $KEY, SERVICE: $SERVICE" # Debug output
-            if [[ "$KEY" == "$SERVICE" ]]; then
+            if [[ "$KEY" == "$SERVICE" ]]; then # Added spaces around ==
               IMAGE_NAME="$VALUE"
               break
             fi
