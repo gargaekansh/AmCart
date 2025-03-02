@@ -35,6 +35,7 @@ stages:
         scriptLocation: 'inlineScript'
         inlineScript: 'az acr login --name $(acrRegistry)'
     - script: |
+        set -x # Enable debugging
         SERVICE_IMAGE_MAPPINGS="$(serviceImageMappings)"
         SERVICES=(
           "Catalog/Catalog.API"
@@ -50,6 +51,7 @@ stages:
           for PAIR in $MAPPING_PAIRS; do
             KEY=$(echo "$PAIR" | cut -d '=' -f 1)
             VALUE=$(echo "$PAIR" | cut -d '=' -f 2)
+            echo "KEY: $KEY, SERVICE: $SERVICE" # Debug output
             if [[ "$KEY" == "$SERVICE" ]]; then
               IMAGE_NAME="$VALUE"
               break
