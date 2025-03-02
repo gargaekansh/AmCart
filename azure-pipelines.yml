@@ -37,8 +37,8 @@ stages:
         SERVICE_IMAGE_MAPPINGS="$(serviceImageMappings)"
         SERVICES=(
           "Catalog/Catalog.API"
-          # "Service2"
-          # "Service3"
+          "Service2"
+          "Service3"
         )
         for SERVICE in "${SERVICES[@]}"; do
           echo "Building Docker image for $SERVICE..."
