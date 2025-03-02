@@ -24,11 +24,11 @@ stages:
       vmImage: ubuntu-latest
     steps:
     - task: Docker@2
-      displayName: Build an image
-       inputs:
+      displayName: Build and push an image to container registry
+      inputs:
         command: 'buildAndPush'
         repository: '$(acrRegistry)/$(imageRepository)'
         dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
-        containerRegistry: 'YourAzureServiceConnectionName' # Replace with your service connection name
+        containerRegistry: '$(serviceConnecion)' # Replace with your service connection name
         tags: '$(tag)'
         buildContext: '$(Build.SourcesDirectory)' # Set the build context to the root
