@@ -1,6 +1,3 @@
-# Docker - Build multiple Docker images with service-to-image mapping
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
-
 trigger:
 - master
 
@@ -11,8 +8,7 @@ variables:
   tag: '$(Build.BuildId)'
   acrRegistry: 'nagp2024amcart0test0acr0.azurecr.io' # Replace with your ACR name
   azureSubscriptionConnectionString: 'ServiceConnectionAmcart0Test0' # Replace with your ARM connection name
-  # serviceImageMappings: 'Catalog/Catalog.API=amcart.catalog.api,Service2=amcart.service2,Service3=amcart.service3' # Service-to-image mapping
-  serviceImageMappings: 'Catalog/Catalog.API=amcart.catalog.api' # Service-to-image mapping
+  serviceImageMappings: 'Services/Catalog/Catalog.API=amcart.catalog.api' # Corrected path
 
 stages:
 - stage: Build
@@ -27,6 +23,7 @@ stages:
       displayName: 'Install Docker'
       inputs:
         dockerVersion: '17.09.0-ce' # Consider using a newer version
+
     - task: AzureCLI@2
       displayName: 'ACR Login'
       inputs:
@@ -34,37 +31,32 @@ stages:
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: 'az acr login --name $(acrRegistry)'
+
     - script: |
         set -x # Enable debugging
-        SERVICE_IMAGE_MAPPINGS="$(serviceImageMappings)"
-        SERVICES=(
-          "Catalog/Catalog.API"
-          # "Service2"
-          # "Service3"
-        )
-        for SERVICE in "${SERVICES[@]}"; do
-          echo "Building Docker image for $SERVICE..."
-          dockerfilePath="src/$SERVICE/Dockerfile"
-          buildContext="src/$SERVICE"
-          MAPPING_PAIRS=$(echo "$SERVICE_IMAGE_MAPPINGS" | tr ',' '\n')
-          IMAGE_NAME=""
-          for PAIR in $MAPPING_PAIRS; do
-            KEY=$(echo "$PAIR" | cut -d '=' -f 1)
-            VALUE=$(echo "$PAIR" | cut -d '=' -f 2)
-            echo "KEY: $KEY, SERVICE: $SERVICE" # Debug output
-            if [[ "$KEY" == "$SERVICE" ]]; then # Added spaces around ==
-              IMAGE_NAME="$VALUE"
-              break
-            fi
-          done
-          if [[ -z "$IMAGE_NAME" ]]; then
-            echo "Error: Image name not found for service $SERVICE"
-            exit 1
-          fi
-          docker build -f "$dockerfilePath" -t "$(acrRegistry)/$IMAGE_NAME:$(tag)" "$buildContext"
-          docker push "$(acrRegistry)/$IMAGE_NAME:$(tag)"
-        done
-      displayName: Build and push multiple images
+
+        SERVICE="Services/Catalog/Catalog.API"
+        IMAGE_NAME="amcart.catalog.api"
+        
+        dockerfilePath="src/$SERVICE/Dockerfile"
+        buildContext="src/$SERVICE"
+
+        # Validate paths
+        if [[ ! -f "$dockerfilePath" ]]; then
+          echo "Error: Dockerfile not found at $dockerfilePath"
+          exit 1
+        fi
+        if [[ ! -d "$buildContext" ]]; then
+          echo "Error: Build context directory not found at $buildContext"
+          exit 1
+        fi
+
+        # Build and push image
+        IMAGE_TAG="$(acrRegistry)/$IMAGE_NAME:$(tag)"
+        echo "Building image: $IMAGE_TAG"
+        docker build -f "$dockerfilePath" -t "$IMAGE_TAG" "$buildContext"
+        docker push "$IMAGE_TAG"
+      displayName: Build and Push Catalog.API
       env:
         ACR_REGISTRY: '$(acrRegistry)'
         BUILD_TAG: '$(tag)'
