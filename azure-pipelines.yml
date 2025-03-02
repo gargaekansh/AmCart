@@ -10,7 +10,6 @@ resources:
 variables:
   tag: '$(Build.BuildId)'
   acrRegistry: 'nagp2024amcart0test0acr0.azurecr.io' # Replace with your ACR name
-  containerRegistryConnectionString: 'ServiceConnectionDockerRegistryAmcart0Test0' # Replace with User-Managed Identity Service Connection
   azureSubscriptionConnectionString: 'ServiceConnectionAmcart0Test0' # Replace with your ARM connection name
 
 stages:
@@ -25,25 +24,25 @@ stages:
     - task: DockerInstaller@0
       displayName: 'Install Docker'
       inputs:
-        dockerVersion: '17.09.0-ce'
+        dockerVersion: '17.09.0-ce' # Consider using a newer version
     - task: AzureCLI@2
       displayName: 'ACR Login'
       inputs:
-        azureSubscription: '$(azureSubscriptionConnectionString)' # Replace with your ARM connection name
+        azureSubscription: '$(azureSubscriptionConnectionString)'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: 'az acr login --name $(acrRegistry)'
     - script: |
         SERVICES=(
-          "Catalog.API"
+          "Catalog/Catalog.API" # Corrected path
           # "Service2" # Replace with your other service names
           # "Service3" # Replace with your other service names
         )
         for SERVICE in "${SERVICES[@]}"; do
           echo "Building Docker image for $SERVICE..."
-          dockerfilePath="src/Services/$SERVICE/Dockerfile"
-          buildContext="src/Services/$SERVICE"
-          imageRepository="amcart.$SERVICE" # Creates unique repo name
+          dockerfilePath="src/$SERVICE/Dockerfile"
+          buildContext="src/$SERVICE"
+          imageRepository="amcart.$(echo "$SERVICE" | sed 's/\//./g')" # Replace / with . for image repo name
           docker build -f "$dockerfilePath" -t "$(acrRegistry)/$imageRepository:$(tag)" "$buildContext"
           docker push "$(acrRegistry)/$imageRepository:$(tag)"
         done
