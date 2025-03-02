@@ -36,8 +36,8 @@ stages:
     - script: |
         SERVICES=(
           "Catalog.API"
-          "Service2" # Replace with your other service names
-          "Service3" # Replace with your other service names
+          # "Service2" # Replace with your other service names
+          # "Service3" # Replace with your other service names
         )
         for SERVICE in "${SERVICES[@]}"; do
           echo "Building Docker image for $SERVICE..."
