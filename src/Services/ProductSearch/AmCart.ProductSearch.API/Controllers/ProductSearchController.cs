@@ -1,8 +1,11 @@
 ﻿using AmCart.ProductSearch.API.Repositories.Interfaces;
+using AmCart.ProductSearch.API.Entities;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -15,7 +18,6 @@ namespace AmCart.ProductSearch.API.Controllers
         private readonly IProductSearchRepository _productSearchRepository;
         private readonly ILogger<ProductSearchController> _logger;
 
-        // Constructor to inject dependencies and ensure they are not null
         public ProductSearchController(IProductSearchRepository productSearchRepository, ILogger<ProductSearchController> logger)
         {
             _productSearchRepository = productSearchRepository ?? throw new ArgumentNullException(nameof(productSearchRepository));
@@ -28,39 +30,44 @@ namespace AmCart.ProductSearch.API.Controllers
         /// <param name="query">The search query string to find relevant products.</param>
         /// <returns>A list of products matching the search query.</returns>
         [HttpGet("search")]
-        //[HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<AmCart.ProductSearch.API.Entities.ProductSearch>), (int)HttpStatusCode.OK)]
-        [ProducesResponseType(typeof(string), (int)HttpStatusCode.BadRequest)] // Handles bad request errors
-        [ProducesResponseType((int)HttpStatusCode.InternalServerError)] // Handles internal server errors
+        [ProducesResponseType(typeof(IEnumerable<Entities.ProductSearch>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(string), (int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType(typeof(string), (int)HttpStatusCode.InternalServerError)]
+        [ProducesResponseType((int)HttpStatusCode.NoContent)]
         [AllowAnonymous]
         public async Task<IActionResult> Search(string query)
         {
-            // Validate query parameter
             if (string.IsNullOrWhiteSpace(query))
             {
-                _logger.LogWarning("Search query is empty or null.");
+                _logger.LogWarning("❌ Search query is empty or null.");
                 return BadRequest("Query parameter is required.");
             }
 
             try
             {
-                _logger.LogInformation("Search initiated for query: {Query}", query);
-                var searchResult = await _productSearchRepository.SearchAsync(query);
+                _logger.LogInformation("🔍 Search initiated for query: {Query}", query);
+                var searchResponse = await _productSearchRepository.SearchAsync(query);
 
-                // If no results are found, return 204 No Content
-                if (searchResult.Documents == null || !searchResult.Documents.Any())
+                // ✅ Handle errors from Elasticsearch or CosmosDB
+                if (!string.IsNullOrEmpty(searchResponse.ErrorMessage))
                 {
-                    _logger.LogInformation("No products found for query: {Query}", query);
-                    return NoContent(); // No content if no results
+                    _logger.LogError("❌ Search failed: {Error}", searchResponse.ErrorMessage);
+                    return StatusCode((int)HttpStatusCode.InternalServerError, searchResponse.ErrorMessage);
                 }
 
-                _logger.LogInformation("Search successful, found {Count} products.", searchResult.Documents.Count());
-                return Ok(searchResult.Documents); // Return results as OK
+                // ✅ Return NoContent if no products are found
+                if (searchResponse.Results == null || searchResponse.Results.Count == 0)
+                {
+                    _logger.LogInformation("🛑 No products found for query: {Query}", query);
+                    return NoContent();
+                }
+
+                _logger.LogInformation("✅ Search successful. Found {Count} products.", searchResponse.TotalCount);
+                return Ok(searchResponse.Results);
             }
             catch (Exception ex)
             {
-                // Log the error and return an InternalServerError response
-                _logger.LogError(ex, "An error occurred while processing the search for query: {Query}", query);
+                _logger.LogError(ex, "❌ An error occurred while processing the search for query: {Query}", query);
                 return StatusCode((int)HttpStatusCode.InternalServerError, "An unexpected error occurred.");
             }
         }

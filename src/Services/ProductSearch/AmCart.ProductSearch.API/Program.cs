@@ -1,18 +1,28 @@
 ﻿using AmCart.ProductSearch.API.Configuration;
 using AmCart.ProductSearch.API.Repositories;
 using AmCart.ProductSearch.API.Repositories.Interfaces;
-using AmCart.ProductSearch.API.Services.Interfaces;
 using AmCart.ProductSearch.API.Services;
-using Microsoft.Extensions.Options;
-using Serilog;
-using MongoDB.Driver;
+using AmCart.ProductSearch.API.Services.Interfaces;
 using AmCart.ProductSearch.API.AutoMapper;
+using AmCart.ProductSearch.API.Shared.Enums;
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
+using MongoDB.Driver;
+using Serilog;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Transport;
 using System;
-using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.DependencyInjection;
+using AutoMapper;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 🔹 Load configuration from appsettings.json and environment variables
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables(); // ✅ Load environment variables
 
 // 🔹 Configure Logging (Serilog)
 ConfigureLogging();
@@ -24,44 +34,102 @@ builder.Services.AddAutoMapper(typeof(ProductMappingProfile));
 builder.Services.AddControllers();
 
 // 🔹 Load configuration from appsettings.json
-// Register MongoDB and Elasticsearch settings from configuration
 builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
 builder.Services.Configure<ElasticSearchSettings>(builder.Configuration.GetSection("ElasticsearchSettings"));
+
+// ✅ Register SearchSettings from appsettings.json
+builder.Services.Configure<SearchSettings>(builder.Configuration.GetSection("SearchSettings"));
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<IOptionsMonitor<SearchSettings>>().CurrentValue
+);
+
+// 🔹 Register MongoDB Client
+//builder.Services.AddSingleton<IMongoClient>(sp =>
+//{
+//    var settings = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
+//    return new MongoClient(settings.ConnectionString);
+//});
 
 // 🔹 Register MongoDB Client as a Singleton
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
-    return new MongoClient(settings.ConnectionString);  // Returns an instance of MongoClient using the connection string from settings
+    var connectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING")
+                           ?? settings.ConnectionString; // ✅ Use env variable if available
+
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        throw new InvalidOperationException("❌ MongoDB/CosmosDB connection string is missing.");
+    }
+
+    return new MongoClient(connectionString);
 });
 
-// 🔹 Register Elasticsearch Client as a Singleton
+// 🔹 Register Elasticsearch Client
 builder.Services.AddSingleton<ElasticsearchClient>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<ElasticSearchSettings>>().Value;
-
-    // Set up connection settings for Elasticsearch, including authentication and timeout
     var connectionSettings = new ElasticsearchClientSettings(new Uri(settings.Uri))
-        .DefaultIndex(settings.DefaultIndex)  // Set default index
+        .DefaultIndex(settings.DefaultIndex) // Set default index
         .Authentication(new BasicAuthentication(settings.Username, settings.Password))  // Use basic authentication with username and password
-        .EnableDebugMode()  // Optional: Enable verbose logging for debugging
-        .DisablePing()  // Optional: Disable ping (disable version check)
-        .ServerCertificateValidationCallback((o, certificate, chain, errors) => true)  // Ignore SSL certificate validation (use cautiously in production)
-        .RequestTimeout(TimeSpan.FromMinutes(2))  // Set request timeout to 2 minutes
-        .ThrowExceptions();  // Ensure exceptions are thrown on errors, preventing silent failures
+        .EnableDebugMode()
+        .DisablePing()
+        .ServerCertificateValidationCallback((o, certificate, chain, errors) => true) // Ignore SSL certificate validation (use cautiously in production)
+        .RequestTimeout(TimeSpan.FromMinutes(2))
+        .ThrowExceptions();// Ensure exceptions are thrown on errors, preventing silent failures
 
     return new ElasticsearchClient(connectionSettings);
 });
 
-// 🔹 Register Repositories and Services
-builder.Services.AddScoped<IProductSearchRepository, ProductSearchRepository>();
+//// 🔹 Register Product Search Repository dynamically
+//builder.Services.AddScoped<IProductSearchRepository>(sp =>
+//{
+//    var settings = sp.GetRequiredService<IOptions<SearchSettings>>().Value;
+//    var mongoClient = sp.GetRequiredService<IMongoClient>();
+//    var elasticClient = sp.GetRequiredService<ElasticsearchClient>();
+
+//    return settings.ProviderType switch
+//    {
+//        SearchProviderType.Elasticsearch => new ProductSearchRepository(elasticClient),
+//        SearchProviderType.CosmosDb or SearchProviderType.MongoDb => new ProductSearchRepository(mongoClient, settings.ProviderType),
+//        _ => throw new InvalidOperationException($"Invalid search provider: {settings.ProviderType}")
+//    };
+//});
+
+// 🔹 Register Product Search Repository dynamically
+builder.Services.AddScoped<IProductSearchRepository>(sp =>
+{
+    var settings = sp.GetRequiredService<IOptions<SearchSettings>>().Value;
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    var mapper = sp.GetRequiredService<IMapper>(); // ✅ Get IMapper instance
+
+    return settings.ProviderType switch
+    {
+        SearchProviderType.Elasticsearch =>
+            new ElasticProductSearchRepository(
+                sp.GetRequiredService<ElasticsearchClient>(),
+                loggerFactory.CreateLogger<ElasticProductSearchRepository>()
+            ),
+
+        SearchProviderType.CosmosDb or SearchProviderType.MongoDb =>
+            new CosmosDbProductSearchRepository(
+                sp.GetRequiredService<IMongoClient>(),  // ✅ Inject MongoClient
+                sp.GetRequiredService<IOptions<MongoDbSettings>>(),  // ✅ Inject MongoDbSettings
+                loggerFactory.CreateLogger<CosmosDbProductSearchRepository>() , // ✅ Inject Logger
+                  mapper  // ✅ Inject AutoMapper
+            ),
+
+        _ => throw new InvalidOperationException($"Invalid search provider: {settings.ProviderType}")
+    };
+});
+
+
+
+// 🔹 Register Services
 builder.Services.AddScoped<IProductDataSyncService, ProductDataSyncService>();
 
-// 🔹 Add Swagger to API Documentation
+// 🔹 Configure Swagger
 builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen();
-
-// 🔹 Configure Swagger with OpenAPI
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -71,7 +139,6 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for searching products in AmCart",
     });
 
-    // Include XML comments (optional, requires XML doc generation)
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -80,59 +147,50 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
-
-// 🔹 Configure CORS policy (Allow all origins, methods, and headers)
+// 🔹 Configure CORS policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());  // Allow all origins and HTTP methods for cross-origin requests
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
 var app = builder.Build();
 
-// 🔹 Ensure Database Connections (MongoDB and Elasticsearch) are Established at Startup
+// 🔹 Ensure Database Connections
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 await EnsureDatabaseConnectionsAsync(app.Services, logger);
 
-// 🔹 Perform Product Data Synchronization during Application Startup
+// 🔹 Perform Product Data Synchronization only for Elasticsearch
 using (var scope = app.Services.CreateScope())
 {
-    var syncService = scope.ServiceProvider.GetRequiredService<IProductDataSyncService>();
-    await syncService.SyncProductDataAsync();  // Sync product data on application startup
+    var settings = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<SearchSettings>>().CurrentValue;
+    if (settings.ProviderType == SearchProviderType.Elasticsearch)
+    {
+        var syncService = scope.ServiceProvider.GetRequiredService<IProductDataSyncService>();
+        await syncService.SyncProductDataAsync();
+    }
 }
 
 // 🔹 Configure Middleware
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();  // Enable Swagger for API documentation in development environment
+    app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Search API v1");
-        options.RoutePrefix = "swagger"; //string.Empty;  // Makes Swagger UI available at root URL
+        options.RoutePrefix = "swagger";
     });
 }
 
-
-//// 🔹 Ensure Swagger is enabled
-//app.UseSwagger();
-//app.UseSwaggerUI(c =>
-//{
-//    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Search API v1");
-//    c.RoutePrefix = "swagger";  // Ensure Swagger is available at /swagger
-//});
-
-
-// 🔹 Apply CORS Middleware (Use defined policy)
 app.UseCors("AllowAll");
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
 
-app.UseHttpsRedirection();  // Redirect HTTP to HTTPS
-app.UseAuthorization();  // Ensure authorization middleware is applied
-app.MapControllers();  // Map controllers to the request pipeline
-
-// 🔹 Health Check Endpoint (Basic route to check if API is live)
+// 🔹 Health Check Endpoint
 app.MapGet("/", () => Results.Ok("Product Search API is running 🚀"));
 
-app.Run();  // Run the application
+app.Run();
 
 /// <summary>
 /// Configures Serilog for logging.
@@ -140,25 +198,25 @@ app.Run();  // Run the application
 void ConfigureLogging()
 {
     Log.Logger = new LoggerConfiguration()
-        .WriteTo.Console()  // Log to console
-        .WriteTo.Debug()    // Log to debug output
+        .WriteTo.Console()
+        .WriteTo.Debug()
         .WriteTo.File(
-            path: @"AmCart.ProductSearch.API-.log",  // Log file path
-            rollingInterval: RollingInterval.Day,  // Create a new log file every day
-            fileSizeLimitBytes: 10_000_000,  // Max log file size (10 MB)
-            rollOnFileSizeLimit: true,  // Roll over the log file if size is exceeded
-            retainedFileCountLimit: 7,  // Retain 7 days' worth of logs
-            encoding: System.Text.Encoding.UTF8  // Use UTF-8 encoding for log files
+            path: @"AmCart.ProductSearch.API-.log",
+            rollingInterval: RollingInterval.Day,
+            fileSizeLimitBytes: 10_000_000,
+            rollOnFileSizeLimit: true,
+            retainedFileCountLimit: 7,
+            encoding: System.Text.Encoding.UTF8
         )
-        .MinimumLevel.Debug()  // Minimum log level (Debug and above)
-        .CreateLogger();  // Create the logger instance
+        .MinimumLevel.Debug()
+        .CreateLogger();
 
-    builder.Logging.ClearProviders();  // Clear default logging providers to use Serilog
-    builder.Logging.AddSerilog();  // Add Serilog to ASP.NET Core logging
+    builder.Logging.ClearProviders();
+    builder.Logging.AddSerilog();
 }
 
 /// <summary>
-/// Ensures that MongoDB and Elasticsearch connections are established at application startup.
+/// Ensures that MongoDB or Elasticsearch connections are established at application startup based on the configured SearchProviderType.
 /// </summary>
 /// <param name="services">The service provider for dependency injection.</param>
 /// <param name="logger">The logger instance for logging connection status.</param>
@@ -166,43 +224,53 @@ async Task EnsureDatabaseConnectionsAsync(IServiceProvider services, Microsoft.E
 {
     using var scope = services.CreateScope();
     var provider = scope.ServiceProvider;
+    var searchSettings = provider.GetRequiredService<IOptionsMonitor<SearchSettings>>().CurrentValue;
 
     try
     {
-        // ✅ Ensure MongoDB connection
-        var mongoClient = provider.GetRequiredService<IMongoClient>();
-        await mongoClient.ListDatabaseNamesAsync();  // Ensure MongoDB connection is successful by listing database names asynchronously
-        logger.LogInformation("✅ MongoDB connection established successfully.");
-
-        // ✅ Ensure Elasticsearch connection with retry logic (up to 5 attempts)
-        var elasticClient = provider.GetRequiredService<ElasticsearchClient>();
-
-        for (int attempt = 1; attempt <= 5; attempt++)
+        if (searchSettings.ProviderType == SearchProviderType.MongoDb || searchSettings.ProviderType == SearchProviderType.CosmosDb)
         {
-            try
-            {
-                var pingResponse = await elasticClient.PingAsync();  // Ping Elasticsearch to check connection
-                if (pingResponse.IsSuccess())
-                {
-                    logger.LogInformation("✅ Elasticsearch connected on attempt {Attempt}.", attempt);
+            // ✅ Ensure MongoDB/CosmosDB connection
+            var mongoClient = provider.GetRequiredService<IMongoClient>();
+            await mongoClient.ListDatabaseNamesAsync();
+            logger.LogInformation("✅ {ProviderType} connection established successfully.", searchSettings.ProviderType);
+        }
+        else if (searchSettings.ProviderType == SearchProviderType.Elasticsearch)
+        {
+            // ✅ Ensure Elasticsearch connection with retry logic
+            var elasticClient = provider.GetRequiredService<ElasticsearchClient>();
 
-                    // ✅ Ensure index and mappings for ProductSearch
-                    await ElasticsearchMappings.CreateProductSearchIndexAsync(elasticClient);
-                    return;
+            for (int attempt = 1; attempt <= 5; attempt++)
+            {
+                try
+                {
+                    var pingResponse = await elasticClient.PingAsync();
+                    if (pingResponse.IsSuccess())
+                    {
+                        logger.LogInformation("✅ Elasticsearch connected on attempt {Attempt}.", attempt);
+
+                        // ✅ Ensure index and mappings for ProductSearch
+                        await ElasticsearchMappings.CreateProductSearchIndexAsync(elasticClient);
+                        return;
+                    }
+
+                    logger.LogWarning("⚠️ Elasticsearch connection failed (Attempt {Attempt}/5): {ErrorMessage}",
+                        attempt, pingResponse.ElasticsearchServerError?.Error?.Reason ?? "Unknown error");
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex,"⚠️ Elasticsearch attempt {Attempt}/5 failed: {ErrorMessage}", attempt, ex.Message);
                 }
 
-                logger.LogWarning("⚠️ Elasticsearch connection failed (Attempt {Attempt}/5): {ErrorMessage}",
-                    attempt, pingResponse.ElasticsearchServerError?.Error?.Reason ?? "Unknown error");
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning("⚠️ Elasticsearch attempt {Attempt}/5 failed: {ErrorMessage}", attempt, ex.Message);
+                await Task.Delay(2000);
             }
 
-            await Task.Delay(2000);  // Retry after 2 seconds
+            logger.LogError("❌ Failed to connect to Elasticsearch after multiple attempts.");
         }
-
-        logger.LogError("❌ Failed to connect to Elasticsearch after multiple attempts.");
+        else
+        {
+            logger.LogError("❌ Invalid search provider: {ProviderType}.", searchSettings.ProviderType);
+        }
     }
     catch (Exception ex)
     {
@@ -210,45 +278,3 @@ async Task EnsureDatabaseConnectionsAsync(IServiceProvider services, Microsoft.E
     }
 }
 
-
-
-
-
-//void EnsureDatabaseConnections(IServiceProvider services, Microsoft.Extensions.Logging.ILogger logger)
-//{
-//    using var scope = services.CreateScope();
-//    var provider = scope.ServiceProvider;
-
-//    try
-//    {
-
-//        //// 🔹 MongoDB Connection Check
-//        var mongoClient = provider.GetRequiredService<IMongoClient>();
-//        mongoClient.ListDatabaseNames();
-//        logger.LogInformation("✅ MongoDB connection established successfully.");
-
-
-//        // 🔹 Elasticsearch Connection Check
-//        var elasticClient = provider.GetRequiredService<IElasticClient>();
-//        for (int attempt = 1; attempt <= 5; attempt++)
-//        {
-//            var pingResponse = elasticClient.Ping();
-//            if (pingResponse.IsValid)
-//            {
-//                logger.LogInformation("✅ Elasticsearch connected on attempt {Attempt}.", attempt);
-//                return;
-//            }
-
-//            logger.LogWarning("⚠️ Elasticsearch connection failed (Attempt {Attempt}/5): {ErrorMessage}",
-//                              attempt, pingResponse.OriginalException?.Message ?? "Unknown error");
-
-//            Thread.Sleep(2000); // Retry delay
-//        }
-
-//        logger.LogError("❌ Failed to connect to Elasticsearch after multiple attempts.");
-//    }
-//    catch (Exception ex)
-//    {
-//        logger.LogError(ex, "❌ Error during service initialization.");
-//    }
-//}

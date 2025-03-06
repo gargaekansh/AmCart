@@ -364,3 +364,6 @@ src/**/bin/
 
 # Ignore environment variable files
 .env
+# Ignore launchSettings.json
+**/Properties/launchSettings.json
+Properties/launchSettings.json

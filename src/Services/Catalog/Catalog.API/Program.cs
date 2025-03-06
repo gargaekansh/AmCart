@@ -334,35 +334,33 @@ SeedDatabase(app, logger); // Pass the logger here.
 app.Run();
 
 /// <summary>
-/// Seeds initial product data into the database if empty.
+/// Seeds initial product data into the database if empty and ensures necessary indexes exist.  (MongoDB 4.0 Compatible)
 /// </summary>
 /// <param name="app">The application instance.</param>
-void SeedDatabase(WebApplication app, ILogger logger) // Receive the logger here.
+/// <param name="logger">The logger instance for logging operations.</param>
+
+void SeedDatabase(WebApplication app, ILogger logger)
 {
     using var scope = app.Services.CreateScope();
     var services = scope.ServiceProvider;
-    //var catalogContextSeedLogger = services.GetRequiredService<ILogger<CatalogContextSeed>>();
 
     try
     {
         var context = services.GetRequiredService<ICatalogContext>();
-        // Ensure the database and collection exist before seeding data
         var productCollection = context.Products;
 
-        // Get the logger for CatalogContextSeed from the service provider
         var seedLogger = services.GetRequiredService<ILogger<CatalogContextSeed>>();
 
-        // Check if index on 'category' exists before creating it
+        // ✅ Get the list of existing indexes
         var existingIndexes = productCollection.Indexes.List().ToList();
-        bool categoryIndexExists = existingIndexes
-            .Any(index => index["key"].AsBsonDocument.Contains("category"));
 
+        // ✅ Ensure single-field index on 'category'
+        bool categoryIndexExists = existingIndexes.Any(index => index["key"].AsBsonDocument.Contains("category"));
         if (!categoryIndexExists)
         {
-          var indexKeysDefinition = Builders<Product>.IndexKeys.Ascending(p => p.Category);
-            //  var indexKeysDefinition = Builders<Product>.IndexKeys.Hashed(p => p.Category);
-            var indexModel = new CreateIndexModel<Product>(indexKeysDefinition);
-            productCollection.Indexes.CreateOne(indexModel);
+            var categoryIndexDefinition = Builders<Product>.IndexKeys.Ascending(p => p.Category);
+            var categoryIndexModel = new CreateIndexModel<Product>(categoryIndexDefinition);
+            productCollection.Indexes.CreateOne(categoryIndexModel);
             logger.LogInformation("✅ Index on 'category' field created.");
         }
         else
@@ -370,21 +368,141 @@ void SeedDatabase(WebApplication app, ILogger logger) // Receive the logger here
             logger.LogInformation("🔹 Index on 'category' already exists.");
         }
 
-        //  Check if the collection is empty before seeding data
-
-        // Check if the collection is empty, and seed data if so
-        if (productCollection != null && !productCollection.AsQueryable().Any())
+        // ✅ Ensure single-field index on 'name'
+        bool nameIndexExists = existingIndexes.Any(index => index["key"].AsBsonDocument.Contains("name"));
+        if (!nameIndexExists)
         {
-            CatalogContextSeed.SeedData(productCollection, seedLogger);
-            logger.LogInformation("Database seeded successfully.");
+            var nameIndexDefinition = Builders<Product>.IndexKeys.Ascending(p => p.Name);
+            var nameIndexModel = new CreateIndexModel<Product>(nameIndexDefinition);
+            productCollection.Indexes.CreateOne(nameIndexModel);
+            logger.LogInformation("✅ Index on 'name' field created.");
         }
         else
         {
-            logger.LogWarning("Product collection is not available or already seeded.");
+            logger.LogInformation("🔹 Index on 'name' already exists.");
+        }
+
+        // ✅ Ensure single-field index on 'description'
+        bool descriptionIndexExists = existingIndexes.Any(index => index["key"].AsBsonDocument.Contains("description"));
+        if (!descriptionIndexExists)
+        {
+            var descriptionIndexDefinition = Builders<Product>.IndexKeys.Ascending(p => p.Description);
+            var descriptionIndexModel = new CreateIndexModel<Product>(descriptionIndexDefinition);
+            productCollection.Indexes.CreateOne(descriptionIndexModel);
+            logger.LogInformation("✅ Index on 'description' field created.");
+        }
+        else
+        {
+            logger.LogInformation("🔹 Index on 'description' already exists.");
+        }
+
+        // ✅ Check if the collection is empty before seeding data
+        if (!productCollection.AsQueryable().Any())
+        {
+            CatalogContextSeed.SeedData(productCollection, seedLogger);
+            logger.LogInformation("✅ Database seeded successfully.");
+        }
+        else
+        {
+            logger.LogWarning("⚠️ Product collection is already seeded.");
         }
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred while seeding the database.");
+        logger.LogError(ex, "❌ An error occurred while seeding the database.");
     }
 }
+
+
+
+
+
+
+
+//void SeedDatabase(WebApplication app, ILogger logger)
+//{
+//    using var scope = app.Services.CreateScope();
+//    var services = scope.ServiceProvider;
+
+//    try
+//    {
+//        var context = services.GetRequiredService<ICatalogContext>();
+//        var productCollection = context.Products;
+
+//        var seedLogger = services.GetRequiredService<ILogger<CatalogContextSeed>>();
+
+//        // ✅ Get the list of existing indexes
+//        var existingIndexes = productCollection.Indexes.List().ToList();
+
+//        // ✅ Ensure Single-Field Index on 'category'
+//        bool categoryIndexExists = existingIndexes.Any(index => index["key"].AsBsonDocument.Contains("category"));
+//        if (!categoryIndexExists)
+//        {
+//            var categoryIndexDefinition = Builders<Product>.IndexKeys.Ascending(p => p.Category);
+//            productCollection.Indexes.CreateOne(new CreateIndexModel<Product>(categoryIndexDefinition));
+//            logger.LogInformation("✅ Single-field Index on 'category' created.");
+//        }
+//        else
+//        {
+//            logger.LogInformation("🔹 Index on 'category' already exists.");
+//        }
+
+//        // ✅ Ensure Single-Field Index on 'name'
+//        bool nameIndexExists = existingIndexes.Any(index => index["key"].AsBsonDocument.Contains("name"));
+//        if (!nameIndexExists)
+//        {
+//            var nameIndexDefinition = Builders<Product>.IndexKeys.Ascending(p => p.Name);
+//            productCollection.Indexes.CreateOne(new CreateIndexModel<Product>(nameIndexDefinition));
+//            logger.LogInformation("✅ Single-field Index on 'name' created.");
+//        }
+//        else
+//        {
+//            logger.LogInformation("🔹 Index on 'name' already exists.");
+//        }
+
+//        // ✅ Ensure Single-Field Index on 'description'
+//        bool descriptionIndexExists = existingIndexes.Any(index => index["key"].AsBsonDocument.Contains("description"));
+//        if (!descriptionIndexExists)
+//        {
+//            var descriptionIndexDefinition = Builders<Product>.IndexKeys.Ascending(p => p.Description);
+//            productCollection.Indexes.CreateOne(new CreateIndexModel<Product>(descriptionIndexDefinition));
+//            logger.LogInformation("✅ Single-field Index on 'description' created.");
+//        }
+//        else
+//        {
+//            logger.LogInformation("🔹 Index on 'description' already exists.");
+//        }
+
+//        // ✅ Ensure Full-Text Search Index (MongoDB Atlas / CosmosDB Search API)
+//        bool textIndexExists = existingIndexes.Any(index =>
+//            index["key"].AsBsonDocument.Elements.Any(e => e.Value.AsInt32 == 2)); // Text indexes have a value of "2"
+
+//        if (!textIndexExists)
+//        {
+//            var textIndexDefinition = Builders<Product>.IndexKeys.Text(p => p.Name).Text(p => p.Description);
+//            productCollection.Indexes.CreateOne(new CreateIndexModel<Product>(textIndexDefinition));
+//            logger.LogInformation("✅ Full-Text Search Index on 'name' and 'description' created.");
+//        }
+//        else
+//        {
+//            logger.LogInformation("🔹 Full-Text Index on 'name' and 'description' already exists.");
+//        }
+
+//        // ✅ Check if the collection is empty before seeding data
+//        if (productCollection != null && !productCollection.AsQueryable().Any())
+//        {
+//            CatalogContextSeed.SeedData(productCollection, seedLogger);
+//            logger.LogInformation("✅ Database seeded successfully.");
+//        }
+//        else
+//        {
+//            logger.LogWarning("⚠️ Product collection is not available or already seeded.");
+//        }
+//    }
+//    catch (Exception ex)
+//    {
+//        logger.LogError(ex, "❌ An error occurred while seeding the database.");
+//    }
+//}
+
+
