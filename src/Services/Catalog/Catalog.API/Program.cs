@@ -381,20 +381,102 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
+//// Configure Swagger for API documentation
+//builder.Services.AddSwaggerGen(c =>
+//{
+//    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Catalog.API", Version = "v1" });
+
+//    string identityServerUrl = Environment.GetEnvironmentVariable("IDENTITY_SERVER_URL")
+//                              ?? configuration.GetValue<string>("IdentityProviderSettings:IdentityServiceUrl");
+
+//    //c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+//    //{
+//    //    Type = SecuritySchemeType.OAuth2,
+//    //    Flows = new OpenApiOAuthFlows()
+//    //    {
+//    //        AuthorizationCode = new OpenApiOAuthFlow()
+//    //        {
+//    //            AuthorizationUrl = new Uri($"{identityServerUrl}/connect/authorize"),
+//    //            TokenUrl = new Uri($"{identityServerUrl}/connect/token"),
+//    //            Scopes = new Dictionary<string, string>
+//    //            {
+//    //                { "catalogapi.fullaccess", "Full access to Catalog API" }
+//    //            }
+//    //        }
+//    //    }
+//    //});
+
+//    c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+//    {
+//        Type = SecuritySchemeType.OAuth2,
+//        Flows = new OpenApiOAuthFlows()
+//        {
+//            Implicit = new OpenApiOAuthFlow()
+//            {
+//                AuthorizationUrl = new Uri("http://localhost:5000/connect/authorize"), // HTTP
+//                TokenUrl = new Uri("http://localhost:5000/connect/token"), // HTTP
+//                Scopes = new Dictionary<string, string>
+//            {
+//                { "catalogapi.fullaccess", "Catalog API Full Access" }
+//            }
+//            }
+//        }
+//    });
+
+//    c.OperationFilter<AuthorizeCheckOperationFilter>();
+//});
+
+
+
+
+
+
 // Register application services for dependency injection
 builder.Services.AddScoped<ICatalogContext, CatalogContext>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
 var app = builder.Build();
 
+// 🔹 Ensure static files are enabled for Swagger UI
+app.UseStaticFiles();
+
 // Configure middleware pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Catalog.API v1"));
+    //app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Catalog.API v1"));
+
+    // 🔹 Configure Swagger UI with custom JavaScript
+    app.UseSwaggerUI(c =>
+    {
+        //c.SwaggerEndpoint("/swagger/v1/swagger.json", "Catalog API v1");
+
+        //// ✅ Inject custom JavaScript (Ensure the file exists in wwwroot/swagger/)
+        //c.InjectJavascript("/swagger/custom-swagger.js");
+
+        //// ✅ OAuth2 Configuration for IdentityServer4
+        //c.OAuthClientId("catalogswaggerui"); // Your Swagger client ID
+        //c.OAuthUsePkce(); // ✅ Enable PKCE to fix "code_challenge is missing" issue
+
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Catalog API v1");
+
+        // ✅ Inject custom JavaScript (Optional, ensure the file exists in wwwroot/swagger/)
+        c.InjectJavascript("/swagger/custom-swagger.js");
+
+        // ✅ OAuth2 Configuration for Implicit Flow
+        c.OAuthClientId("catalogswaggerui");  // 🔹 Use your Swagger Client ID
+        //c.OAuthUsePkce(false);  // 🔹 PKCE is not required for Implicit Flow
+        //c.OAuthUseBasicAuthenticationWithAccessCodeGrant(false); // 🔹 Prevents asking for client secret
+        c.OAuthScopeSeparator(" "); // 🔹 Space-separated scopes
+    });
+
     logger.LogInformation("Developer environment middleware configured.");
 }
+
+
+
+
 
 app.UseRouting();
 app.UseAuthorization();

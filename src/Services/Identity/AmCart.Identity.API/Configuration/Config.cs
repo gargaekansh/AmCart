@@ -113,6 +113,11 @@ namespace AmCart.Identity.API.Configuration
                                 configuration.GetValue<string>("ApiUrls:Catalog") ??
                                 "http://localhost:8000"; // Default value
 
+            var RedirectUris =  $"{catalogApiUrl}/swagger/oauth2-redirect.html" ;
+            Console.WriteLine("RedirectUris = " + RedirectUris);
+            var PostLogoutRedirectUris = $"{catalogApiUrl}/swagger/";
+            Console.WriteLine("PostLogoutRedirectUris = " + PostLogoutRedirectUris);
+
             var basketApiUrl = Environment.GetEnvironmentVariable("ApiUrls__Basket") ??
                                configuration.GetValue<string>("ApiUrls:Basket") ??
                                "http://localhost:5001"; // Default value
@@ -316,6 +321,52 @@ namespace AmCart.Identity.API.Configuration
             },
              AlwaysIncludeUserClaimsInIdToken = true, // 🔹 Ensure claims are included
         },
+
+//        new Client
+//{
+//                ClientId = "catalogswaggerui",
+//    ClientName = "Catalog Swagger UI",
+//    AllowedGrantTypes = GrantTypes.Implicit,  // 🔹 Use Implicit Flow
+//    AllowAccessTokensViaBrowser = true,       // 🔹 Required for browser-based apps like Swagger UI
+
+//    RedirectUris = { "http://localhost:5002/swagger/oauth2-redirect.html" },
+//    PostLogoutRedirectUris = { "http://localhost:5002/swagger/" },
+//    AllowedCorsOrigins = { "http://localhost:5002" },
+
+//    AllowedScopes = { "catalogapi.fullaccess" },
+//    RequirePkce = false, // 🔹 PKCE is not needed for Implicit Flow
+//    RequireClientSecret = false,  // 🔹 No client secret needed for Implicit Flow
+
+
+//    //ClientId = "catalogswaggerui",
+//    //ClientName = "Catalog Swagger UI",
+//    //AllowedGrantTypes = GrantTypes.Code, // 🔹 Use Authorization Code Flow with PKCE
+//    //RequireClientSecret = false, // 🔹 No client secret needed for public clients like Swagger UI
+//    //RedirectUris = { $"{catalogApiUrl}/swagger/oauth2-redirect.html" },
+//    //PostLogoutRedirectUris = { $"{catalogApiUrl}/swagger/" },
+//    //AllowedCorsOrigins = { catalogApiUrl }, // 🔹 Allow CORS for Swagger UI
+//    //AllowedScopes = { "catalogapi.fullaccess" },
+//    //AllowAccessTokensViaBrowser = true, // 🔹 Allow access tokens in the browser
+//    //RequirePkce = true, // 🔹 Enforce PKCE (causing the issue now)
+
+    
+            
+//    //        ClientId = "catalogswaggerui",
+//    //ClientName = "Catalog Swagger UI",
+
+//    //AllowedGrantTypes = GrantTypes.Code, // ✅ Use Authorization Code Flow
+//    //RequireClientSecret = false,         // ✅ Remove client secret requirement (PKCE)
+//    //RequirePkce = true,                  // ✅ Enable PKCE for security
+
+//    //AllowAccessTokensViaBrowser = true, // Required for Swagger UI
+//    //RedirectUris = { $"{catalogApiUrl}/swagger/oauth2-redirect.html" },
+//    //PostLogoutRedirectUris = { $"{catalogApiUrl}/swagger/" },
+
+//    //AllowedScopes = { "catalogapi.fullaccess" },
+
+//    //AlwaysIncludeUserClaimsInIdToken = true // Ensure user claims are available
+//},
+
         new Client
         {
             ClientId = "basketswaggerui",

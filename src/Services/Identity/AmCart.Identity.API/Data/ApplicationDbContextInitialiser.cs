@@ -289,6 +289,33 @@ namespace AmCart.Identity.API.Data
                 }
             }
 
+            // 3. Example User Creation (You'll likely do this through registration)
+            // This is just an example; you'll typically create users through your registration process.
+            var testUser = await _userManager.FindByEmailAsync("testuser@localhost");
+            if (testUser == null)
+            {
+                testUser = new ApplicationUser { UserName = "testuser@localhost", Email = "testuser@localhost" };
+                var userResult = await _userManager.CreateAsync(testUser, "UserPassword1!"); // Use a configuration source for passwords!
+                if (userResult.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(testUser, "User"); // Add to "User" role
+                }
+                else
+                {
+                    _logger.LogError("Failed to create test user: {Errors}", string.Join(", ", userResult.Errors.Select(e => e.Description)));
+                }
+                //if (!userResult.Succeeded)
+                //{
+                //    // Log and handle errors
+                //    foreach (var error in userResult.Errors)
+                //    {
+                //        _logger.LogError(error.Description);
+                //    }
+                //    throw new Exception("Failed to create test user");
+                //}
+                //await _userManager.AddToRoleAsync(testUser, "User"); // Add to "User" role
+            }
+
             _logger.LogInformation("Database seeding completed.");
         }
     }

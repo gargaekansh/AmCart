@@ -21,6 +21,18 @@ using IdentityServer4.EntityFramework.DbContexts;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// In this system we are using Nginx Ingress, therefore we need to resend the headers into this service
+//#region ReverseProxy - header forwarding
+//builder.Services.Configure<ForwardedHeadersOptions>(options =>
+//{
+//    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+//    // Everything what was configured implicitly, we need to reset.
+//    options.KnownNetworks.Clear();
+//    options.KnownProxies.Clear();
+//});
+//#endregion
+
 // 🔹 Ensure correct Role and User ID claims mapping
 builder.Services.Configure<IdentityOptions>(options =>
 {
@@ -28,7 +40,11 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.ClaimsIdentity.UserIdClaimType = JwtClaimTypes.Subject; // Map user ID claim
 });
 
-builder.Services.AddControllers(); // Add this line!
+// 🔹 Enable MVC and Razor Pages
+builder.Services.AddControllersWithViews(); // ✅ Enable MVC Controllers & Views
+builder.Services.AddRazorPages(); // ✅ Enable Razor Pages
+
+//builder.Services.AddControllers(); // Add this line!
 
 // Load configuration from appsettings.json and environment variables
 var configuration = new ConfigurationBuilder()
@@ -255,16 +271,25 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+
 // 🔹 Middleware Setup
-app.UseRouting();
+app.UseForwardedHeaders();
 app.UseCookiePolicy(new CookiePolicyOptions { MinimumSameSitePolicy = Microsoft.AspNetCore.Http.SameSiteMode.Lax });
+app.UseStaticFiles();
+
+app.UseRouting();
 
 app.UseAuthentication();
 app.UseIdentityServer();
 app.UseAuthorization();
 
-// 🔹 Map Controllers & Health Checks
-app.MapControllers();
+// ✅ Use top-level route registrations (Fixes ASP0014 warning)
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}"); // 👈 Conventional routing
+
+app.MapRazorPages();  // ✅ Razor Pages
+app.MapControllers(); // ✅ Attribute-based routing
 app.MapHealthChecks("/hc", new HealthCheckOptions
 {
     Predicate = _ => true,
@@ -272,6 +297,33 @@ app.MapHealthChecks("/hc", new HealthCheckOptions
 });
 
 app.Run();
+
+
+//// 🔹 Middleware Setup
+////app.UseRouting();
+////app.UseCookiePolicy(new CookiePolicyOptions { MinimumSameSitePolicy = Microsoft.AspNetCore.Http.SameSiteMode.Lax });
+//app.UseForwardedHeaders();
+//app.UseCookiePolicy(new CookiePolicyOptions { MinimumSameSitePolicy = Microsoft.AspNetCore.Http.SameSiteMode.Lax });
+//app.UseStaticFiles(); // Enable the static files from wwwroot directory
+//app.UseRouting();
+//app.UseAuthentication();
+//app.UseStaticFiles();
+
+//app.UseIdentityServer();
+//app.UseAuthorization();
+
+//// 🔹 Map Controllers, Razor Pages & Health Checks
+//app.MapControllers();
+//app.MapRazorPages(); // ✅ Map Razor Pages for IdentityServer UI
+//app.MapHealthChecks("/hc", new HealthCheckOptions
+//{
+//    Predicate = _ => true,
+//    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+//});
+
+
+
+//app.Run();
 
 
 

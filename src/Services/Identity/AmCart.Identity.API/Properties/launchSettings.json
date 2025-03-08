@@ -29,7 +29,7 @@
         "WebClientUrls__Angular": "http://localhost:4200",
         "WebClientUrls__Node": "http://localhost:3000",
 
-        "ApiUrls__Catalog": "http://localhost:65286", //"http://localhost:8000",
+        "ApiUrls__Catalog":"http://localhost:5002", //"http://localhost:65286", //"http://localhost:8000",
         "ApiUrls__Basket": "http://localhost:5001",
         "ApiUrls__Order": "http://localhost:5004",
         "ApiUrls__Payment": "http://localhost:5009",
