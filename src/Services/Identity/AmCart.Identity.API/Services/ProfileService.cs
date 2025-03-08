@@ -5,6 +5,7 @@ using IdentityServer4.Models;
 using IdentityServer4.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -24,6 +25,15 @@ namespace AmCart.Identity.API.Services
         // Get user claims to include in the token
         public async Task GetProfileDataAsync(ProfileDataRequestContext context)
         {
+            Debug.WriteLine("🔹 ProfileService HIT!");
+            Console.WriteLine("🔹 ProfileService HIT!");
+
+            // Check if claims are requested
+            if (context.RequestedClaimTypes != null)
+            {
+                Console.WriteLine($"🔹 Requested Claims: {string.Join(", ", context.RequestedClaimTypes)}");
+            }
+
             var user = await _userManager.FindByIdAsync(context.Subject.GetSubjectId()); // Get user by ID
 
             if (user != null)
@@ -31,6 +41,8 @@ namespace AmCart.Identity.API.Services
                 // Create a list of claims to include in the access token
                 var claims = new List<Claim>
                 {
+                    new Claim(JwtClaimTypes.PreferredUserName, user.UserName), // ✅ Best option for IdentityServer4
+                    new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
                     new Claim(ClaimTypes.Name, user.UserName),
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // Ensure ID is string
@@ -52,9 +64,13 @@ namespace AmCart.Identity.API.Services
 
                 // Fetch user roles and add them as claims
                 var roles = await _userManager.GetRolesAsync(user);
+
                 foreach (var role in roles)
                 {
-                    claims.Add(new Claim(ClaimTypes.Role, role)); // Add roles to claims
+                    claims.Add(new Claim(ClaimTypes.Role, role)); // Standard ASP.NET Role claim
+                    claims.Add(new Claim("role", role));          // Explicitly add "role" for compatibility
+                    claims.Add(new Claim("roles", role));         // Sometimes expected as an array
+                    claims.Add(new Claim(JwtClaimTypes.Role, role)); // 🔹 IdentityServer4 role claim
                 }
 
                 // Debugging: Log the subject claim to ensure it's included

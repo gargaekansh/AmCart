@@ -1,11 +1,14 @@
 ﻿using Catalog.API.Entities;
 using Catalog.API.Repositories.Interfaces;
+using IdentityModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace Catalog.API.Controllers
@@ -23,6 +26,22 @@ namespace Catalog.API.Controllers
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
+
+        [Authorize]
+        [HttpGet("testroles")]
+        public IActionResult TestRoles()
+        {
+            var user = User.Identity;
+            var roles = User.Claims.Where(c => c.Type == JwtClaimTypes.Role).Select(c => c.Value).ToList();
+
+            return Ok(new
+            {
+                UserName = user?.Name,
+                Roles = roles,
+                AllClaims = User.Claims.Select(c => new { c.Type, c.Value }) // Debug all claims
+            });
+        }
+
 
         [AllowAnonymous]
         [HttpGet("test")]
@@ -68,6 +87,7 @@ namespace Catalog.API.Controllers
 
         [Route("[action]", Name = "PostProduct")]
         [HttpPost]
+        [Authorize(Policy = "HasFullAccess")]
         [ProducesResponseType(typeof(Product), (int)HttpStatusCode.OK)]
         public async Task<ActionResult<Product>> CreateProduct([FromBody] Product product)
         {
@@ -77,6 +97,7 @@ namespace Catalog.API.Controllers
 
         [Route("[action]", Name = "PostProductBatch")]
         [HttpPost]
+        [Authorize(Policy = "HasFullAccess")]
         [ProducesResponseType(typeof(IEnumerable<Product>), (int)HttpStatusCode.OK)]
         public async Task<ActionResult<IEnumerable<Product>>> CreateProducts([FromBody] IEnumerable<Product> products)
         {
@@ -85,6 +106,7 @@ namespace Catalog.API.Controllers
         }
 
         [HttpPut]
+        [Authorize(Policy = "HasFullAccess")]
         [ProducesResponseType(typeof(Product), (int)HttpStatusCode.OK)]
         public async Task<ActionResult<Product>> UpdateProduct([FromBody] Product product)
         {
@@ -94,7 +116,8 @@ namespace Catalog.API.Controllers
 
         [HttpDelete("{id:int}", Name = "DeleteProduct")]
         [ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
-        [Authorize(Roles = "Administrator", Policy = "HasFullAccess")]
+        //[Authorize(Roles = "Administrator", Policy = "HasFullAccess")]
+        [Authorize(Policy = "HasFullAccess")]
         public async Task<IActionResult> DeleteProductById(int id)
         {
             bool result = await _repository.DeleteProduct(id);

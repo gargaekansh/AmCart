@@ -198,6 +198,9 @@ using Catalog.API.Entities;
 using Catalog.API.Filters;
 using Catalog.API.Repositories;
 using Catalog.API.Repositories.Interfaces;
+using IdentityModel;
+using IdentityServer4.AccessTokenValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -205,6 +208,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
 
@@ -226,22 +230,86 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 // Add HTTP context accessor service
 builder.Services.AddHttpContextAccessor();
 
-// Configure authentication using IdentityServer4
-builder.Services.AddAuthentication(IdentityServer4.AccessTokenValidation.IdentityServerAuthenticationDefaults.AuthenticationScheme)
+// Retrieve Identity Service URL from environment variable first, fallback to appsettings.json
+var identityServiceUrl = Environment.GetEnvironmentVariable("IDENTITY_SERVER_URL")
+                         ?? configuration["IdentityProviderSettings:IdentityServiceUrl"];
+
+// Log a warning if the Identity Service URL is not set (but don't throw an exception)
+if (string.IsNullOrEmpty(identityServiceUrl))
+{
+    logger.LogWarning("Identity Service URL is not configured! Using default fallback or authentication may fail.");
+}
+
+// Configure authentication using IdentityServer4 and JWT Bearer tokens
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         try
         {
-            options.Authority = configuration["IdentityProviderSettings:IdentityServiceUrl"];
-            options.Audience = "catalogapi";
-            options.RequireHttpsMetadata = false;
-            logger.LogInformation("Authentication configured.");
+            options.Authority = identityServiceUrl; // ✅ IdentityServer URL
+            options.Audience = "catalogapi"; // ✅ Matches API resource in IdentityServer
+            options.RequireHttpsMetadata = false; // ❗ Only disable for development
+
+            // ✅ Ensure correct claim mappings
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                RoleClaimType = JwtClaimTypes.Role, // IdentityServer4 uses "role"
+                NameClaimType = JwtClaimTypes.PreferredUserName, // "preferred_username"
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true
+            };
+
+            logger.LogInformation($"Authentication configured with Authority: {identityServiceUrl ?? "NOT SET"}");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error configuring authentication.");
         }
     });
+
+
+
+//builder.Services.AddAuthentication(IdentityServer4.AccessTokenValidation.IdentityServerAuthenticationDefaults.AuthenticationScheme)
+//    .AddJwtBearer(options =>
+//    {
+//        try
+//        {
+//            // Set the Authority URL for token validation (from environment or config)
+//            options.Authority = identityServiceUrl;
+
+//            // Set the API audience (the API resource this service represents)
+//            options.Audience = "catalogapi";
+
+//            // Allow HTTP URLs (disable HTTPS metadata requirement, useful in local/dev environments)
+//            options.RequireHttpsMetadata = false;
+
+//            // Ensure correct role claim mapping
+//            //options.TokenValidationParameters = new TokenValidationParameters
+//            //{
+//            //    RoleClaimType = "role",
+//            //    NameClaimType = "name"
+//            //};
+//            options.TokenValidationParameters = new TokenValidationParameters
+//            {
+//                RoleClaimType = "role", // ✅ Ensure role claims are recognized
+//                NameClaimType = JwtRegisteredClaimNames.Sub,
+
+//            };
+
+
+
+//            // Log the final authority URL used for authentication
+//            logger.LogInformation($"Authentication configured with Authority: {identityServiceUrl ?? "NOT SET"}");
+//        }
+//        catch (Exception ex)
+//        {
+//            // Log any errors encountered while configuring authentication
+//            logger.LogError(ex, "Error configuring authentication.");
+//        }
+//    });
+
 
 // Configure authorization policies
 builder.Services.AddAuthorization(options =>
@@ -284,6 +352,10 @@ builder.Services.AddSwaggerGen(c =>
     try
     {
         c.SwaggerDoc("v1", new OpenApiInfo { Title = "Catalog.API", Version = "v1" });
+
+        string identityServerUrl = Environment.GetEnvironmentVariable("IDENTITY_SERVER_URL")
+                                  ?? configuration.GetValue<string>("IdentityProviderSettings:IdentityServiceUrl");
+
         c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
         {
             Type = SecuritySchemeType.OAuth2,
@@ -291,8 +363,8 @@ builder.Services.AddSwaggerGen(c =>
             {
                 Implicit = new OpenApiOAuthFlow()
                 {
-                    AuthorizationUrl = new Uri($"{configuration.GetValue<string>("IdentityProviderSettings:IdentityServiceUrl")}/connect/authorize"),
-                    TokenUrl = new Uri($"{configuration.GetValue<string>("IdentityProviderSettings:IdentityServiceUrl")}/connect/token"),
+                    AuthorizationUrl = new Uri($"{identityServerUrl}/connect/authorize"),
+                    TokenUrl = new Uri($"{identityServerUrl}/connect/token"),
                     Scopes = new Dictionary<string, string>
                     {
                         { "catalogapi.fullaccess", "Catalog API" }
