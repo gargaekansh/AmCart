@@ -15,10 +15,28 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using IdentityServer4.Services;
 using IdentityServer4.Validation;
+using IdentityModel;
+using System.Security.Claims;
+using IdentityServer4.EntityFramework.DbContexts;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 🔹 Ensure correct Role and User ID claims mapping
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.ClaimsIdentity.RoleClaimType = ClaimTypes.Role; // Map role claim
+    options.ClaimsIdentity.UserIdClaimType = JwtClaimTypes.Subject; // Map user ID claim
+});
+
 builder.Services.AddControllers(); // Add this line!
+
+// Load configuration from appsettings.json and environment variables
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+    .AddEnvironmentVariables() // Load environment variables
+    .Build();
 
 
 //// In this system we are using Nginx Ingress, therefore we need to resend the headers into this service
@@ -40,23 +58,41 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSet
 builder.Services.AddTransient<IProfileService, ProfileService>();
 builder.Services.AddTransient<ITokenService, DefaultTokenService>();
 builder.Services.AddTransient<IResourceOwnerPasswordValidator, ResourceOwnerPasswordValidator>();
-builder.Services.AddTransient<IExtensionGrantValidator, TokenExchangeExtensionGrantValidator>(); 
+builder.Services.AddTransient<IExtensionGrantValidator, TokenExchangeExtensionGrantValidator>();
 
 // 🔹 Configure Database
+// Configure database connection
+
+
+
+var connectionString = Environment.GetEnvironmentVariable("IDENTITY_DB_CONNECTION")
+                     ?? builder.Configuration.GetConnectionString("IdentityDb"); // Fallback to appsettings.json
+
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//    options.UseSqlServer(builder.Configuration.GetConnectionString("IdentityDb")));
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("IdentityDb")));
+    options.UseSqlServer(connectionString));
 
 //builder.Services.AddDbContext<PersistedGrantDbContext>(options =>
 //    options.UseSqlServer(builder.Configuration.GetConnectionString("IdentityDb")));
 
 
 var migrationsAssembly = typeof(Program).GetTypeInfo().Assembly.GetName().Name;
-var connectionString = builder.Configuration.GetConnectionString("IdentityDb");
+//var connectionString = builder.Configuration.GetConnectionString("IdentityDb");
+
+
+
 
 // 🔹 Configure Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+
+// Register PersistedGrantDbContext for IdentityServer4
+builder.Services.AddDbContext<AmCart.Identity.API.Data.PersistedGrantDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
 
 //// 🔹 Configure IdentityServer
 //builder.Services.AddIdentityServer(options =>
@@ -90,6 +126,9 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 //);
 
 
+
+
+
 // 🔹 Configure IdentityServer
 builder.Services.AddIdentityServer(options =>
 {
@@ -98,6 +137,7 @@ builder.Services.AddIdentityServer(options =>
     options.Events.RaiseFailureEvents = true;
     options.Events.RaiseSuccessEvents = true;
     options.EmitStaticAudienceClaim = true;
+
 })
 .AddProfileService<ProfileService>()   // Register custom profile service
 .AddDeveloperSigningCredential()  // 🔒 Use a real certificate in production
@@ -107,7 +147,8 @@ builder.Services.AddIdentityServer(options =>
 .AddInMemoryApiResources(Config.ApiResources)
 .AddInMemoryApiScopes(Config.ApiScopes)
 
-.AddInMemoryClients(Config.Clients(builder.Configuration))
+//.AddInMemoryClients(Config.Clients(builder.Configuration))
+.AddInMemoryClients(Config.Clients(configuration))
 .AddExtensionGrantValidator<TokenExchangeExtensionGrantValidator>()
 
 
@@ -135,6 +176,8 @@ builder.Services.AddIdentityServer(options =>
                     // 🔄 Enable token cleanup
                     options.EnableTokenCleanup = true;
                     options.TokenCleanupInterval = 3600; // Cleanup every 1 hour
+                    //options.DeviceFlowCodes = false; // ADD THIS LINE TO DISABLE IT
+
                 }
 );
 
@@ -177,7 +220,8 @@ builder.Services.AddSwaggerGen(c =>
 // 🔹 Add Health Checks
 builder.Services.AddHealthChecks()
     .AddSqlServer(
-        connectionString: builder.Configuration.GetConnectionString("IdentityDb")!,
+        //connectionString: builder.Configuration.GetConnectionString("IdentityDb")!,
+        connectionString: connectionString!,
         healthQuery: "SELECT 1", // Ensures a simple check
         name: "sql",
         failureStatus: HealthStatus.Unhealthy,

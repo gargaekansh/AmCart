@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace AmCart.Identity.API.Data.Migrations
+namespace AmCart.Identity.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250216085322_InitialCreate")]
+    [Migration("20250308182536_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

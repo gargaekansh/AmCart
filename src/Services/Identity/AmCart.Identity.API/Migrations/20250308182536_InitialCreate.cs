@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace AmCart.Identity.API.Data.Migrations
+namespace AmCart.Identity.API.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration

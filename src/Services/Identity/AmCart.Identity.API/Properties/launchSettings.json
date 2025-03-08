@@ -22,8 +22,8 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "IDENTITY_SERVER_URL": "https://localhost:44370",
-        //"IDENTITY_DB_CONNECTION": "Server=localhost;Database=IdentityDb1;User Id=sa;Password=Pass@word123;Encrypt=True;TrustServerCertificate=True;",//Local DB 
-        "IDENTITY_DB_CONNECTION": "Server=tcp:adm312735covid-srv.database.windows.net,1433;Initial Catalog=IdentityDb0;Persist Security Info=False;User ID=admin312735;Password=Pass@word123;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
+        "IDENTITY_DB_CONNECTION": "Server=localhost;Database=IdentityDb2;User Id=sa;Password=Pass@word123;Encrypt=True;TrustServerCertificate=True;", //Local DB 
+        //"IDENTITY_DB_CONNECTION": "Server=tcp:adm312735covid-srv.database.windows.net,1433;Initial Catalog=IdentityDb0;Persist Security Info=False;User ID=admin312735;Password=Pass@word123;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
 
         "WebClientUrls__Razor": "https://localhost:4999", //"https://localhost:4999",
         "WebClientUrls__Angular": "http://localhost:4200",
