@@ -142,7 +142,10 @@ builder.Services.AddDbContext<AmCart.Identity.API.Data.PersistedGrantDbContext>(
 //);
 
 
-
+// Retrieve Identity Service URL from environment variable or fallback to config file
+var identityServiceUrl = Environment.GetEnvironmentVariable("IDENTITY_SERVER_URL") ??
+                          configuration["IdentityIssuer"]
+                         ?? "http://amcart.identity.api:8080"; // ✅ Ensure it has a valid port
 
 
 // 🔹 Configure IdentityServer
@@ -153,6 +156,7 @@ builder.Services.AddIdentityServer(options =>
     options.Events.RaiseFailureEvents = true;
     options.Events.RaiseSuccessEvents = true;
     options.EmitStaticAudienceClaim = true;
+    options.IssuerUri = identityServiceUrl;
 
 })
 .AddProfileService<ProfileService>()   // Register custom profile service

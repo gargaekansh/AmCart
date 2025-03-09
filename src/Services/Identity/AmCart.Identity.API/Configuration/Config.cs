@@ -109,14 +109,22 @@ namespace AmCart.Identity.API.Configuration
                                   configuration.GetValue<string>("WebClientUrls:Blazor") ??
                                   "https://localhost:5002"; // Default value
 
-            var catalogApiUrl = Environment.GetEnvironmentVariable("ApiUrls__Catalog") ??
-                                configuration.GetValue<string>("ApiUrls:Catalog") ??
-                                "http://localhost:8000"; // Default value
+            //var catalogApiUrl = Environment.GetEnvironmentVariable("ApiUrls__Catalog") ??
+            //                    configuration.GetValue<string>("ApiUrls:Catalog") ??
+            //                    "http://localhost:8000"; // Default value
 
-            var RedirectUris =  $"{catalogApiUrl}/swagger/oauth2-redirect.html" ;
-            Console.WriteLine("RedirectUris = " + RedirectUris);
-            var PostLogoutRedirectUris = $"{catalogApiUrl}/swagger/";
-            Console.WriteLine("PostLogoutRedirectUris = " + PostLogoutRedirectUris);
+            //var catalogApiInternalUrl = Environment.GetEnvironmentVariable("ApiUrls__CatalogInternal")
+            //                ?? configuration["ApiUrls:CatalogInternal"]
+            //                ?? "http://amcart.catalog.api:8080";
+
+            var catalogApiPublicUrl = Environment.GetEnvironmentVariable("ApiUrls__CatalogPublic")
+                                      ?? configuration["ApiUrls:CatalogPublic"]
+                                      ?? "http://localhost:8000";
+
+            //var catalogApiRedirectUris =  $"{catalogApiPublicUrl}/swagger/oauth2-redirect.html" ;
+            //Console.WriteLine("RedirectUris = " + catalogApiRedirectUris);
+            //var catalogApiPostLogoutRedirectUris = $"{catalogApiPublicUrl}/swagger/";
+            //Console.WriteLine("PostLogoutRedirectUris = " + catalogApiPostLogoutRedirectUris);
 
             var basketApiUrl = Environment.GetEnvironmentVariable("ApiUrls__Basket") ??
                                configuration.GetValue<string>("ApiUrls:Basket") ??
@@ -313,8 +321,8 @@ namespace AmCart.Identity.API.Configuration
             ClientName = "Catalog Swagger UI",
             AllowedGrantTypes = GrantTypes.Implicit, // Implicit flow for Swagger UI
             AllowAccessTokensViaBrowser = true,
-            RedirectUris = { $"{catalogApiUrl}/swagger/oauth2-redirect.html" },
-            PostLogoutRedirectUris = { $"{catalogApiUrl}/swagger/" },
+            RedirectUris = { $"{catalogApiPublicUrl}/swagger/oauth2-redirect.html" },
+            PostLogoutRedirectUris = { $"{catalogApiPublicUrl}/swagger/" },
             AllowedScopes =
             {
                 "catalogapi.fullaccess"
