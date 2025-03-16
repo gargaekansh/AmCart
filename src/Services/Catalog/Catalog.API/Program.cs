@@ -484,6 +484,14 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<ICatalogContext, CatalogContext>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowAngularApp",
+//        policy => policy.WithOrigins("http://localhost:4200")
+//                        .AllowAnyMethod()
+//                        .AllowAnyHeader());
+//});
+
 var app = builder.Build();
 
 // 🔹 Ensure static files are enabled for Swagger UI
@@ -525,7 +533,16 @@ if (app.Environment.IsDevelopment())
 
 
 
+// Enable CORS before routing
+//app.UseCors("AllowAngularApp"); // 🔥 Add this here
+var angularClientUrl = Environment.GetEnvironmentVariable("ANGULAR_CLIENT_URL") ?? "http://localhost:4200";
 
+app.UseCors(builder =>
+     //builder.WithOrigins(angularClientUrl)  // ✅ Allow frontend from env variable or default
+     builder.SetIsOriginAllowed(_ => true)
+           .AllowAnyHeader()
+           .AllowAnyMethod()
+           .AllowCredentials());  // ✅ Required for secured endpoints
 
 app.UseRouting();
 app.UseAuthorization();

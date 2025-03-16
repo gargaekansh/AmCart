@@ -314,6 +314,31 @@ namespace AmCart.Identity.API.Configuration
             AccessTokenLifetime = 300 // Access token lifetime (in seconds)
         },
 
+        //// IdentityServer4 Configuration (Enable ROP Flow)
+          new Client
+        {
+            ClientId = "angular-client-password",
+            ClientName = "Shopping Angular Client (Password Grant)",
+            AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,
+            AllowOfflineAccess = true, // ✅ Enables refresh tokens for "Remember Me"
+            RequireClientSecret = false,
+            AllowedScopes =
+            {
+                IdentityServerConstants.StandardScopes.OpenId,
+                IdentityServerConstants.StandardScopes.Profile,
+                IdentityServerConstants.StandardScopes.OfflineAccess,
+                "email",
+                "catalogapi.fullaccess"
+            },
+            AccessTokenLifetime = 3600, // ⏳ 1 hour access token
+            RefreshTokenUsage = TokenUsage.ReUse, // ✅ Allows using the same refresh token
+            RefreshTokenExpiration = TokenExpiration.Sliding, // ✅ Extends refresh token validity on use
+            AbsoluteRefreshTokenLifetime = jwtSettings.RememberMeTokenExpirationDays * 86400, // Convert days to seconds
+            SlidingRefreshTokenLifetime = jwtSettings.TokenExpirationHours * 3600, // Convert hours to seconds
+            AllowedCorsOrigins = { $"{angularClientUri}" },
+            RequireConsent = false
+        },
+
         // Swagger UI clients for various APIs (catalog, basket, order, etc.)
         new Client
         {

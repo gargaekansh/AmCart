@@ -182,7 +182,15 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseCors("AllowAll");
+//app.UseCors("AllowAll");
+var angularClientUrl = Environment.GetEnvironmentVariable("ANGULAR_CLIENT_URL") ?? "http://localhost:4200";
+
+app.UseCors(builder =>
+     //builder.WithOrigins(angularClientUrl)  // ✅ Allow frontend from env variable or default
+     builder.SetIsOriginAllowed(_ => true)
+           .AllowAnyHeader()
+           .AllowAnyMethod());
+           //.AllowCredentials());  // ✅ Required for secured endpoints
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();

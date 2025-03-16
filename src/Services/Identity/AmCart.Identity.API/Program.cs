@@ -277,8 +277,29 @@ if (app.Environment.IsDevelopment())
 
 
 // 🔹 Middleware Setup
+
+
 app.UseForwardedHeaders();
 app.UseCookiePolicy(new CookiePolicyOptions { MinimumSameSitePolicy = Microsoft.AspNetCore.Http.SameSiteMode.Lax });
+
+var angularClientUrl = Environment.GetEnvironmentVariable("ANGULAR_CLIENT_URL") ?? "http://localhost:4200";
+
+app.UseCors(builder =>
+     //builder.WithOrigins(angularClientUrl)  // ✅ Allow frontend from env variable or default
+     builder.SetIsOriginAllowed(_ => true)
+           .AllowAnyHeader()
+           .AllowAnyMethod()
+           .AllowCredentials());  // ✅ Required for secured endpoints
+
+//app.UseCors(builder => builder.SetIsOriginAllowed(_ => true).AllowAnyHeader().AllowAnyMethod().AllowCredentials());
+
+//// ✅ Apply CORS before Routing
+//app.UseCors(builder =>
+//    builder.WithOrigins("http://localhost:4200")
+//           .AllowAnyHeader()
+//           .AllowAnyMethod()
+//           .AllowCredentials());
+
 app.UseStaticFiles();
 
 app.UseRouting();

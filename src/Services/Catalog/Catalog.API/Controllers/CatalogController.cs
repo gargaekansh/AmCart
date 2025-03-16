@@ -59,19 +59,25 @@ namespace Catalog.API.Controllers
             return Ok(products);
         }
 
-        [HttpGet("{id:int}", Name = "GetProduct")]
+        [HttpGet("{id}", Name = "GetProduct")]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [ProducesResponseType(typeof(Product), (int)HttpStatusCode.OK)]
         [AllowAnonymous]
-        public async Task<ActionResult<Product>> GetProductById(int id)
+        public async Task<ActionResult<Product>> GetProductById(string id)
         {
-            var product = await _repository.GetProduct(id);
+            if (!int.TryParse(id, out int productId))
+            {
+                _logger.LogError("Invalid product ID: {ProductId}. ID must be an integer.", id);
+                return BadRequest("Product ID must be an integer.");
+            }
+
+            var product = await _repository.GetProduct(productId);
             if (product == null)
             {
-
-                _logger.LogError("Product with id: {ProductId}, not found.", id);
+                _logger.LogError("Product with id: {ProductId}, not found.", productId);
                 return NotFound();
             }
+
             return Ok(product);
         }
 
@@ -114,14 +120,29 @@ namespace Catalog.API.Controllers
             return result ? Ok(product) : NotFound();
         }
 
-        [HttpDelete("{id:int}", Name = "DeleteProduct")]
+        [HttpDelete("{id}", Name = "DeleteProduct")]
         [ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
-        //[Authorize(Roles = "Administrator", Policy = "HasFullAccess")]
         [Authorize(Policy = "HasFullAccess")]
-        public async Task<IActionResult> DeleteProductById(int id)
+        public async Task<IActionResult> DeleteProductById(string id)
         {
-            bool result = await _repository.DeleteProduct(id);
+            if (!int.TryParse(id, out int productId))
+            {
+                _logger.LogError("Invalid product ID: {ProductId}. ID must be an integer.", id);
+                return BadRequest("Product ID must be an integer.");
+            }
+
+            bool result = await _repository.DeleteProduct(productId);
             return result ? Ok(result) : NotFound();
         }
+
+        //[HttpDelete("{id:int}", Name = "DeleteProduct")]
+        //[ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
+        ////[Authorize(Roles = "Administrator", Policy = "HasFullAccess")]
+        //[Authorize(Policy = "HasFullAccess")]
+        //public async Task<IActionResult> DeleteProductById(int id)
+        //{
+        //    bool result = await _repository.DeleteProduct(id);
+        //    return result ? Ok(result) : NotFound();
+        //}
     }
 }

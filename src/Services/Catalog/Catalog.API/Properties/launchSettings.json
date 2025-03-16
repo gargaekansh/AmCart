@@ -6,8 +6,9 @@
       "launchUrl": "swagger",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "IDENTITY_SERVER_URL": "https://localhost:44370", //"localhost:44370",
-        "COSMOSDB_CONNECTION_STRING": "mongodb://cosmoamcart1catalogdb1:0lqem0AXToNbiwMjtRMLLlEUoG7TYYnWN5ar6xlYrE4uxlxkDFozxQjNz9OCtOsO4oqvMuZeGnN3ACDbHPvurA==@cosmoamcart1catalogdb1.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@cosmoamcart1catalogdb1@"
+        "IDENTITY_SERVER_URL": "http://localhost:50595", //"https://localhost:44370", //"localhost:44370",
+        "COSMOSDB_CONNECTION_STRING": "mongodb://localhost:27017" //LOCAL 
+        //"COSMOSDB_CONNECTION_STRING": "mongodb://cosmoamcart1catalogdb1:0lqem0AXToNbiwMjtRMLLlEUoG7TYYnWN5ar6xlYrE4uxlxkDFozxQjNz9OCtOsO4oqvMuZeGnN3ACDbHPvurA==@cosmoamcart1catalogdb1.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@cosmoamcart1catalogdb1@"
       }
     },
     "Catalog.API": {
