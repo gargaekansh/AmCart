@@ -22,16 +22,16 @@ using IdentityServer4.EntityFramework.DbContexts;
 var builder = WebApplication.CreateBuilder(args);
 
 // In this system we are using Nginx Ingress, therefore we need to resend the headers into this service
-//#region ReverseProxy - header forwarding
-//builder.Services.Configure<ForwardedHeadersOptions>(options =>
-//{
-//    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+#region ReverseProxy - header forwarding
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
 
-//    // Everything what was configured implicitly, we need to reset.
-//    options.KnownNetworks.Clear();
-//    options.KnownProxies.Clear();
-//});
-//#endregion
+    // Everything what was configured implicitly, we need to reset.
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+#endregion
 
 // 🔹 Ensure correct Role and User ID claims mapping
 //builder.Services.Configure<IdentityOptions>(options =>
