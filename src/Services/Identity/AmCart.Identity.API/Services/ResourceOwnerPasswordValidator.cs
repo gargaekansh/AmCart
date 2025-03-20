@@ -3,6 +3,7 @@ using IdentityModel;
 using IdentityServer4.Models;
 using IdentityServer4.Validation;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 
 namespace AmCart.Identity.API.Services
 {
@@ -32,8 +33,33 @@ namespace AmCart.Identity.API.Services
             }
 
             var sub = await _userManager.GetUserIdAsync(user);
-            context.Result = new GrantValidationResult(sub, OidcConstants.AuthenticationMethods.Password);
+
+            // ✅ Fetch user roles
+            var roles = await _userManager.GetRolesAsync(user);
+            var claims = new List<Claim>
+    {
+        new Claim(JwtClaimTypes.Subject, sub),
+        new Claim(JwtClaimTypes.Id, sub),
+        new Claim(JwtClaimTypes.Name, user.UserName)
+    };
+
+            // ✅ Add roles as claims
+            foreach (var role in roles)
+            {
+                //claims.Add(new Claim(JwtClaimTypes.Role, role)); // "role" claim
+
+                claims.Add(new Claim(ClaimTypes.Role, role)); // Standard ASP.NET Role claim
+                claims.Add(new Claim("role", role));          // Explicitly add "role" for compatibility
+                claims.Add(new Claim("roles", role));         // Sometimes expected as an array
+                claims.Add(new Claim(JwtClaimTypes.Role, role)); // 🔹 IdentityServer4 role claim
+
+            }
+
+            Console.WriteLine($"✅ User Roles Added to Token: {string.Join(", ", roles)}");
+
+            context.Result = new GrantValidationResult(sub, OidcConstants.AuthenticationMethods.Password, claims);
         }
+
     }
 
 }

@@ -34,11 +34,26 @@ var builder = WebApplication.CreateBuilder(args);
 //#endregion
 
 // 🔹 Ensure correct Role and User ID claims mapping
-builder.Services.Configure<IdentityOptions>(options =>
-{
-    options.ClaimsIdentity.RoleClaimType = ClaimTypes.Role; // Map role claim
-    options.ClaimsIdentity.UserIdClaimType = JwtClaimTypes.Subject; // Map user ID claim
-});
+//builder.Services.Configure<IdentityOptions>(options =>
+//{
+//    options.ClaimsIdentity.RoleClaimType = ClaimTypes.Role; // Map role claim
+//    options.ClaimsIdentity.UserIdClaimType = JwtClaimTypes.Subject; // Map user ID claim
+//});
+
+
+
+
+
+/*********************** Uncomment THis for JwtClaimTypes.Role; ***********************/
+//////builder.Services.Configure<IdentityOptions>(options =>
+//////{
+//////    //options.ClaimsIdentity.RoleClaimType = "role"; // Match the claim in JWT
+//////    options.ClaimsIdentity.RoleClaimType = JwtClaimTypes.Role;
+//////    options.ClaimsIdentity.UserIdClaimType = JwtClaimTypes.Subject;
+//////});
+///
+
+
 
 // 🔹 Enable MVC and Razor Pages
 builder.Services.AddControllersWithViews(); // ✅ Enable MVC Controllers & Views
@@ -70,7 +85,7 @@ var configuration = new ConfigurationBuilder()
 
 // 🔹 Configure Services
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-////builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ICustomTokenService, CustomTokenService>();
 builder.Services.AddTransient<IProfileService, ProfileService>();
 builder.Services.AddTransient<ITokenService, DefaultTokenService>();
 builder.Services.AddTransient<IResourceOwnerPasswordValidator, ResourceOwnerPasswordValidator>();
@@ -145,7 +160,7 @@ builder.Services.AddDbContext<AmCart.Identity.API.Data.PersistedGrantDbContext>(
 // Retrieve Identity Service URL from environment variable or fallback to config file
 var identityServiceUrl = Environment.GetEnvironmentVariable("IDENTITY_SERVER_URL") ??
                           configuration["IdentityIssuer"]
-                         ?? "http://amcart.identity.api:8080"; // ✅ Ensure it has a valid port
+                         ?? "amcart.centralindia.cloudapp.azure.com"; 
 
 
 // 🔹 Configure IdentityServer
@@ -159,6 +174,7 @@ builder.Services.AddIdentityServer(options =>
     options.IssuerUri = identityServiceUrl;
 
 })
+
 .AddProfileService<ProfileService>()   // Register custom profile service
 .AddDeveloperSigningCredential()  // 🔒 Use a real certificate in production
 .AddAspNetIdentity<ApplicationUser>()

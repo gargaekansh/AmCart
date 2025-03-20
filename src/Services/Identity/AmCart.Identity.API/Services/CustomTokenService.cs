@@ -13,13 +13,16 @@ namespace AmCart.Identity.API.Services
 {
 
 
-    public class TokenService //: ITokenService
+    public class CustomTokenService : ICustomTokenService
     {
         private readonly JwtSettings _jwtSettings;
-        
-        public TokenService(IOptions<JwtSettings> jwtSettings)
+        private readonly IConfiguration _configuration; // ✅ Store configuration
+
+        public CustomTokenService(IOptions<JwtSettings> jwtSettings, IConfiguration configuration)
         {
             _jwtSettings = jwtSettings.Value; // Access the settings from IOptions
+
+            _configuration = configuration;   // ✅ Assign configuration to a field
         }
 
         /// <summary>
@@ -31,6 +34,11 @@ namespace AmCart.Identity.API.Services
         /// <returns>A JWT token as a string that the user can use for authenticated requests.</returns>
         public string GenerateJwtToken(ApplicationUser user, bool rememberMe = false, List<Claim>? additionalClaims = null)
         {
+            // Retrieve Identity Service URL from environment variable or fallback to config file
+            var identityServiceUrl = Environment.GetEnvironmentVariable("IDENTITY_SERVER_URL") ??
+                                      _configuration["IdentityIssuer"]
+                                     ?? "amcart.centralindia.cloudapp.azure.com"; 
+
             // Define claims to include in the JWT token
             var claims = new List<Claim>
             {
@@ -64,7 +72,7 @@ namespace AmCart.Identity.API.Services
 
             // Create the JWT token with specified claims, signing credentials, and expiration
             var token = new JwtSecurityToken(
-                issuer: _jwtSettings.Issuer,
+                issuer: identityServiceUrl,//_jwtSettings.Issuer,
                 audience: _jwtSettings.Audience,
                 claims: claims,
                 expires: expiration,
