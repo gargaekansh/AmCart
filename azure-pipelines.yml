@@ -6,7 +6,7 @@ resources:
 
 variables:
   tag: '$(Build.BuildId)'
-  acrRegistry: 'nagp2024amcart0test0acr0.azurecr.io' # Replace with your ACR name #nagp2024amcart0test0acr.azurecr.io # free acc nagp2024amcart0test0acr.azurecr.io
+  acrRegistry: 'nagp2024amcart0test0acr.azurecr.io' # Replace with your ACR name #nagp2024amcart0test0acr.azurecr.io # free acc nagp2024amcart0test0acr.azurecr.io
   azureSubscriptionConnectionString: 'ServiceConnectionAmcart0Test0' # Replace with your ARM connection name
   serviceImageMappings: 'Services/Catalog/Catalog.API=amcart.catalog.api' # Corrected path
 
