@@ -173,6 +173,10 @@ builder.Services.AddIdentityServer(options =>
     options.EmitStaticAudienceClaim = true;
     options.IssuerUri = identityServiceUrl;
 
+    //TODO::Set Base Path in IdentityServer4 
+    //options.IssuerUri = "http://amcart.centralindia.cloudapp.azure.com/identity";
+
+
 })
 
 .AddProfileService<ProfileService>()   // Register custom profile service
@@ -264,6 +268,11 @@ builder.Services.AddHealthChecks()
         tags: new[] { "db", "sql", "sqlserver" });
 
 var app = builder.Build();
+
+//TODO::Set Base Path in IdentityServer4 
+
+// 👇 Set base path so all endpoints are prefixed with /identity
+app.UsePathBase("/identity");
 
 // 🔹 Apply Migrations & Seed Database in Development
 if (app.Environment.IsDevelopment())

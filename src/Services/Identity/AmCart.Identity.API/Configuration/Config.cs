@@ -17,6 +17,7 @@ namespace AmCart.Identity.API.Configuration
                 new IdentityResources.OpenId(),
                 new IdentityResources.Profile(), // givenName, familyName claims will be returned
                 new IdentityResources.Address(),
+                new IdentityResources.Email(),           // ✅ Adds email scope
                 new IdentityResource() { Name = "roles", DisplayName = "Roles", Description = "User roles", UserClaims = new[] { "role" } }
         //        new IdentityResource
         //{
