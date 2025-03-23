@@ -162,11 +162,20 @@ stages:
           # Replace the variables before deploying  
           - script: |
               echo "Replacing variables in catalog-api-deployment.yaml"
-              sed -i "s|\$(ACR_NAME)|${ACR_NAME}|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
-              sed -i "s|\$(Build.BuildId)|${BUILD_BUILDID}|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
+              
+              # Log the variables to ensure they are accessible
+              echo "ACR_NAME: $(acrRegistry)"
+              echo "Build.BuildId: $(Build.BuildId)"
+
+              # Replace variables using correct syntax
+              sed -i "s|\$(ACR_NAME)|$(acrRegistry)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
+              sed -i "s|\$(Build.BuildId)|$(Build.BuildId)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
+
+              # Show the updated file for verification
               echo "Updated Deployment File:"
               cat $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
             displayName: 'Replace Variables in Deployment File'
+
 
     
 
