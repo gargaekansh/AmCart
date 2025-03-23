@@ -117,17 +117,17 @@ stages:
               # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-config.yaml'
               arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-config.yaml"'
 
-          # - task: Kubernetes@1
-          #   displayName: 'Apply Catalog Secret'
-          #   inputs:
-          #     connectionType: '$(connectionType)'  # Using variable here
-          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-          #     azureResourceGroup: '$(azureResourceGroup)'
-          #     kubernetesCluster: '$(kubernetesCluster)'
-          #     command: 'apply'
-          #     # configurationType: 'manifest'
-          #     configurationType: 'configuration'  # ✅ Correct value
-          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml'
+          - task: Kubernetes@1
+            displayName: 'Apply Catalog Secret'
+            inputs:
+              connectionType: '$(connectionType)'  # Using variable here
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              # configurationType: 'manifest'
+              configurationType: 'configuration'  # ✅ Correct value
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml'
 
           # - task: Kubernetes@1
           #   displayName: 'Deploy Catalog API'
