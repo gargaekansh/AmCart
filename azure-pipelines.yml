@@ -109,20 +109,20 @@ stages:
           
             # Create Namespace
 
-          - task: Kubernetes@1
-            displayName: 'Create Namespace'
-            inputs:
-              connectionType: '$(connectionType)'
-              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-              azureResourceGroup: '$(azureResourceGroup)'
-              kubernetesCluster: '$(kubernetesCluster)'
-              command: 'apply'
-              configurationType: 'configuration'
-              configuration: |
-                apiVersion: v1
-                kind: Namespace
-                metadata:
-                  name: $(NAMESPACE) # Using the NAMESPACE variable
+          # - task: Kubernetes@1
+          #   displayName: 'Create Namespace'
+          #   inputs:
+          #     connectionType: '$(connectionType)'
+          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+          #     azureResourceGroup: '$(azureResourceGroup)'
+          #     kubernetesCluster: '$(kubernetesCluster)'
+          #     command: 'apply'
+          #     configurationType: 'configuration'
+          #     configuration: |
+          #       apiVersion: v1
+          #       kind: Namespace
+          #       metadata:
+          #         name: $(NAMESPACE) # Using the NAMESPACE variable
 
           # ---------- Catalog API ----------
           - task: Kubernetes@1
