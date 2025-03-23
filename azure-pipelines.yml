@@ -68,5 +68,5 @@ stages:
               command: buildAndPush
               repository: '$(acrRegistry)/amcart.catalog.api'
               dockerfile: '$(System.DefaultWorkingDirectory)/src/Services/Catalog.API/Dockerfile'
-              context: '$(System.DefaultWorkingDirectory)/src/Services/Catalog.API'
+              #context: '$(System.DefaultWorkingDirectory)/src/Services/Catalog.API'
               tags: '$(tag)'
