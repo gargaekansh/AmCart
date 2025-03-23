@@ -46,9 +46,9 @@ stages:
           #     docker system prune -f
           #   displayName: "Clean Docker Cache"
 
-          - script: |
-              ls -R /home/vsts/work/1/s/DeploymentScripts/AKS/Catalog/
-            displayName: 'List Catalog Directory'
+          # - script: |
+          #     ls -R /home/vsts/work/1/s/DeploymentScripts/AKS/Catalog/
+          #   displayName: 'List Catalog Directory'
 
           # Install Docker
           # Install Docker
@@ -82,7 +82,7 @@ stages:
             inputs:
               command: buildAndPush
               repository: '$(acrRegistry)/amcart.identity.api'
-              dockerfile: 'src/Services/Identity.API/Dockerfile'
+              dockerfile: '$(System.DefaultWorkingDirectory)/src/Services/Identity/AmCart.Identity.API/Dockerfile'
               tags: '$(tag)'
 
           - task: Docker@2
@@ -90,7 +90,7 @@ stages:
             inputs:
               command: buildAndPush
               repository: '$(acrRegistry)/amcart.productsearch.api'
-              dockerfile: 'src/Services/ProductSearch.API/Dockerfile'
+              dockerfile: '$(System.DefaultWorkingDirectory)/src/Services/ProductSearch/AmCart.ProductSearch.API/Dockerfile'
               tags: '$(tag)'
 
 # -----------------------------------#
