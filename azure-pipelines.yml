@@ -252,7 +252,7 @@ stages:
               configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-secret.yaml'
 
           - task: Kubernetes@1
-            displayName: 'Deploy Identity API'
+            displayName: 'Deploy Identity API to AKS'
             inputs:
               connectionType: '$(connectionType)'  # Using variable here
               azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
@@ -260,7 +260,8 @@ stages:
               kubernetesCluster: '$(kubernetesCluster)'
               command: 'apply'
               configurationType: 'configuration'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-deployment.yaml'
+              # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-deployment.yaml'
+              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-deployment-temp.yaml"'
 
           # - script: |
           #     echo "Checking rollout status for Identity API..."
@@ -300,7 +301,8 @@ stages:
               kubernetesCluster: '$(kubernetesCluster)'
               command: 'apply'
               configurationType: 'configuration'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-deployment.yaml'
+              # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-deployment.yaml'
+              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-deployment-temp.yaml"'
 
           # - script: |
           #     echo "Checking rollout status for ProductSearch API..."
