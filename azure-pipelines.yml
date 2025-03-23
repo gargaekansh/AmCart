@@ -86,34 +86,37 @@ stages:
           - task: Kubernetes@1
             displayName: 'Apply Catalog ConfigMap'
             inputs:
-              connectionType: '$(connectionType)'
+              connectionType: '$(connectionType)'  # Using variable here
               azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
               azureResourceGroup: '$(azureResourceGroup)'
               kubernetesCluster: '$(kubernetesCluster)'
               command: 'apply'
-              configurationType: 'manifest'
+              # configurationType: 'manifest'
+              configurationType: 'configuration'  # ✅ Correct value
               configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-configmap.yaml'
 
           - task: Kubernetes@1
             displayName: 'Apply Catalog Secret'
             inputs:
-              connectionType: 'AzureResourceManager'
+              connectionType: '$(connectionType)'  # Using variable here
               azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
               azureResourceGroup: '$(azureResourceGroup)'
               kubernetesCluster: '$(kubernetesCluster)'
               command: 'apply'
-              configurationType: 'manifest'
+              # configurationType: 'manifest'
+              configurationType: 'configuration'  # ✅ Correct value
               configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml'
 
           - task: Kubernetes@1
             displayName: 'Deploy Catalog API'
             inputs:
-              connectionType: 'AzureResourceManager'
+              connectionType: '$(connectionType)'  # Using variable here
               azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
               azureResourceGroup: '$(azureResourceGroup)'
               kubernetesCluster: '$(kubernetesCluster)'
               command: 'apply'
-              configurationType: 'manifest'
+              # configurationType: 'manifest'
+              configurationType: 'configuration'  # ✅ Correct value
               configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml'
 
           - script: |
@@ -123,61 +126,62 @@ stages:
             failOnStderr: true
 
           # ---------- Identity API ----------
-          - task: Kubernetes@1
-            displayName: 'Apply Identity ConfigMap'
-            inputs:
-              connectionType: 'AzureResourceManager'
-              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-              azureResourceGroup: '$(azureResourceGroup)'
-              kubernetesCluster: '$(kubernetesCluster)'
-              command: 'apply'
-              configurationType: 'manifest'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-configmap.yaml'
+          # - task: Kubernetes@1
+          #   displayName: 'Apply Identity ConfigMap'
+          #   inputs:
+          #     connectionType: '$(connectionType)'  # Using variable here
+          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+          #     azureResourceGroup: '$(azureResourceGroup)'
+          #     kubernetesCluster: '$(kubernetesCluster)'
+          #     command: 'apply'
+          #     configurationType: 'manifest'
+          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-configmap.yaml'
 
-          - task: Kubernetes@1
-            displayName: 'Apply Identity Secret'
-            inputs:
-              connectionType: 'Azure Resource Manager'
-              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-              azureResourceGroup: '$(azureResourceGroup)'
-              kubernetesCluster: '$(kubernetesCluster)'
-              command: 'apply'
-              configurationType: 'manifest'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-secret.yaml'
+          # - task: Kubernetes@1
+          #   displayName: 'Apply Identity Secret'
+          #   inputs:
+          #     # connectionType: 'Azure Resource Manager'
+          #     connectionType: '$(connectionType)'  # Using variable here
+          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+          #     azureResourceGroup: '$(azureResourceGroup)'
+          #     kubernetesCluster: '$(kubernetesCluster)'
+          #     command: 'apply'
+          #     configurationType: 'manifest'
+          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-secret.yaml'
 
-          - task: Kubernetes@1
-            displayName: 'Deploy Identity API'
-            inputs:
-              connectionType: 'AzureResourceManager'
-              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-              azureResourceGroup: '$(azureResourceGroup)'
-              kubernetesCluster: '$(kubernetesCluster)'
-              command: 'apply'
-              configurationType: 'manifest'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-deployment.yaml'
+          # - task: Kubernetes@1
+          #   displayName: 'Deploy Identity API'
+          #   inputs:
+          #     connectionType: '$(connectionType)'  # Using variable here
+          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+          #     azureResourceGroup: '$(azureResourceGroup)'
+          #     kubernetesCluster: '$(kubernetesCluster)'
+          #     command: 'apply'
+          #     configurationType: 'manifest'
+          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-deployment.yaml'
 
-          - script: |
-              echo "Checking rollout status for Identity API..."
-              kubectl rollout status deployment/identity-api -n $(NAMESPACE) --timeout=120s
-            displayName: "Verify Identity API Rollout"
-            failOnStderr: true
+          # - script: |
+          #     echo "Checking rollout status for Identity API..."
+          #     kubectl rollout status deployment/identity-api -n $(NAMESPACE) --timeout=120s
+          #   displayName: "Verify Identity API Rollout"
+          #   failOnStderr: true
 
           # ---------- ProductSearch API ----------
-          - task: Kubernetes@1
-            displayName: 'Apply ProductSearch ConfigMap'
-            inputs:
-              connectionType: 'AzureResourceManager'
-              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-              azureResourceGroup: '$(azureResourceGroup)'
-              kubernetesCluster: '$(kubernetesCluster)'
-              command: 'apply'
-              configurationType: 'manifest'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-configmap.yaml'
+          # - task: Kubernetes@1
+          #   displayName: 'Apply ProductSearch ConfigMap'
+          #   inputs:
+          #     connectionType: '$(connectionType)'  # Using variable here
+          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+          #     azureResourceGroup: '$(azureResourceGroup)'
+          #     kubernetesCluster: '$(kubernetesCluster)'
+          #     command: 'apply'
+          #     configurationType: 'manifest'
+          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-configmap.yaml'
 
           # - task: Kubernetes@1
           #   displayName: 'Apply ProductSearch Secret'
           #   inputs:
-          #     connectionType: 'AzureResourceManager'
+          #     connectionType: '$(connectionType)'  # Using variable here
           #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
           #     azureResourceGroup: '$(azureResourceGroup)'
           #     kubernetesCluster: '$(kubernetesCluster)'
@@ -188,7 +192,7 @@ stages:
           # - task: Kubernetes@1
           #   displayName: 'Deploy ProductSearch API'
           #   inputs:
-          #     connectionType: 'AzureResourceManager'
+          #     connectionType: '$(connectionType)'  # Using variable here
           #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
           #     azureResourceGroup: '$(azureResourceGroup)'
           #     kubernetesCluster: '$(kubernetesCluster)'
@@ -196,8 +200,8 @@ stages:
           #     configurationType: 'manifest'
           #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-deployment.yaml'
 
-          - script: |
-              echo "Checking rollout status for ProductSearch API..."
-              kubectl rollout status deployment/productsearch-api -n $(NAMESPACE) --timeout=120s
-            displayName: "Verify ProductSearch API Rollout"
-            failOnStderr: true
+          # - script: |
+          #     echo "Checking rollout status for ProductSearch API..."
+          #     kubectl rollout status deployment/productsearch-api -n $(NAMESPACE) --timeout=120s
+          #   displayName: "Verify ProductSearch API Rollout"
+          #   failOnStderr: true
