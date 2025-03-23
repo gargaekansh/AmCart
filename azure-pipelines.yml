@@ -159,6 +159,17 @@ stages:
               # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml'
               arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml"'
 
+          # Replace the variables before deploying  
+          - script: |
+              echo "Replacing variables in catalog-api-deployment.yaml"
+              sed -i "s|\$(ACR_NAME)|${ACR_NAME}|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
+              sed -i "s|\$(Build.BuildId)|${BUILD_BUILDID}|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
+              echo "Updated Deployment File:"
+              cat $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
+            displayName: 'Replace Variables in Deployment File'
+
+    
+
           - task: Kubernetes@1
             displayName: 'Deploy Catalog API'
             inputs:
@@ -171,6 +182,14 @@ stages:
               configurationType: 'configuration'  # ✅ Correct value
               # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml'
               arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml"'
+        
+
+          # Manually Set Kubernetes Context in the Pipeline
+
+          - script: |
+              az aks get-credentials --resource-group $(azureResourceGroup) --name $(kubernetesCluster) --overwrite-existing
+            displayName: 'Set Kubernetes Credentials'
+
 
           - script: |
               echo "Checking rollout status for Catalog API..."
