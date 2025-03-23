@@ -67,14 +67,14 @@ stages:
                 az acr login --name $(acrRegistry)
 
           # Build and Push Docker Images for All Services
-          - task: Docker@2
-            displayName: 'Build and Push Catalog API'
-            inputs:
-              command: buildAndPush
-              repository: '$(acrRegistry)/amcart.catalog.api'
-              dockerfile: '$(System.DefaultWorkingDirectory)/src/Services/Catalog/Catalog.API/Dockerfile'
-              #context: '$(System.DefaultWorkingDirectory)/src/Services/Catalog.API'
-              tags: '$(tag)'
+          # - task: Docker@2
+          #   displayName: 'Build and Push Catalog API'
+          #   inputs:
+          #     command: buildAndPush
+          #     repository: '$(acrRegistry)/amcart.catalog.api'
+          #     dockerfile: '$(System.DefaultWorkingDirectory)/src/Services/Catalog/Catalog.API/Dockerfile'
+          #     #context: '$(System.DefaultWorkingDirectory)/src/Services/Catalog.API'
+          #     tags: '$(tag)'
 
           # - task: Docker@2
           #   displayName: 'Build and Push Identity API'
@@ -158,24 +158,24 @@ stages:
               # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml'
               arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml"'
 
-          - task: Kubernetes@1
-            displayName: 'Deploy Catalog API'
-            inputs:
-              connectionType: '$(connectionType)'  # Using variable here
-              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-              azureResourceGroup: '$(azureResourceGroup)'
-              kubernetesCluster: '$(kubernetesCluster)'
-              command: 'apply'
-              # configurationType: 'manifest'
-              configurationType: 'configuration'  # ✅ Correct value
-              # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml'
-              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml"'
+          # - task: Kubernetes@1
+          #   displayName: 'Deploy Catalog API'
+          #   inputs:
+          #     connectionType: '$(connectionType)'  # Using variable here
+          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+          #     azureResourceGroup: '$(azureResourceGroup)'
+          #     kubernetesCluster: '$(kubernetesCluster)'
+          #     command: 'apply'
+          #     # configurationType: 'manifest'
+          #     configurationType: 'configuration'  # ✅ Correct value
+          #     # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml'
+          #     arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml"'
 
-          - script: |
-              echo "Checking rollout status for Catalog API..."
-              kubectl rollout status deployment/catalog-api-deployment -n $(NAMESPACE) --timeout=120s
-            displayName: "Verify Catalog API Rollout"
-            failOnStderr: true
+          # - script: |
+          #     echo "Checking rollout status for Catalog API..."
+          #     kubectl rollout status deployment/catalog-api-deployment -n $(NAMESPACE) --timeout=120s
+          #   displayName: "Verify Catalog API Rollout"
+          #   failOnStderr: true
 
           # ---------- Identity API ----------
           # - task: Kubernetes@1
