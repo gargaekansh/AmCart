@@ -117,8 +117,14 @@ stages:
               azureResourceGroup: '$(azureResourceGroup)'
               kubernetesCluster: '$(kubernetesCluster)'
               command: 'apply'
-              configurationType: 'configuration'
-              arguments: '-f - <<EOF apiVersion: v1 kind: Namespace metadata: name: $(NAMESPACE) EOF'
+              # configurationType: 'configuration'
+              # arguments: '-f - <<EOF apiVersion: v1 kind: Namespace metadata: name: $(NAMESPACE) EOF'
+              configurationType: 'inline'
+              configuration: |
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: $(NAMESPACE)
               # configuration: |
               #   apiVersion: v1
               #   kind: Namespace
