@@ -23,7 +23,8 @@ stages:
     jobs:
       - job: BuildJob
         displayName: 'Docker Build'
-        pool: SelfHosted
+        pool:
+         vmImage: ubuntu-latest
         steps:
           # Install Docker
           - task: DockerInstaller@0
