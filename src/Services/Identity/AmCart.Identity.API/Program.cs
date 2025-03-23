@@ -181,6 +181,9 @@ builder.Services.AddIdentityServer(options =>
 
 .AddProfileService<ProfileService>()   // Register custom profile service
 .AddDeveloperSigningCredential()  // 🔒 Use a real certificate in production
+//.AddDeveloperSigningCredential(
+//    persistKey: true,
+//    filename: "/data/keys/tempkey.jwk") // ✅ Specify writable path
 .AddAspNetIdentity<ApplicationUser>()
 .AddResourceOwnerValidator<ResourceOwnerPasswordValidator>()
 .AddInMemoryIdentityResources(Config.IdentityResources)
