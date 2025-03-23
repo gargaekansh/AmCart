@@ -1,0 +1,52 @@
+# kubectl rollout restart deployment catalog-api-deployment -n amcart
+
+# kubectl apply -f catalog-api-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-api-deployment
+  namespace: amcart
+  labels:
+    app: catalog-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-api
+  template:
+    metadata:
+      labels:
+        app: catalog-api
+    spec:
+      containers:
+      - name: catalog-api-container
+        # image: gargaekansh/amcart.catalog.api:1.0.5
+        # image: gargaekansh/amcart.catalog.api:1.0.5
+        image: $(ACR_NAME).azurecr.io/amcart.catalog.api:$(Build.BuildId)
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        # - name: IDENTITY_SERVER_URL
+        #   value: "http://identity-api-service.amcart.svc.cluster.local:8080"
+        envFrom:
+        - configMapRef:
+            name: catalog-api-config
+        - secretRef:
+            name: catalog-api-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-api-service
+  namespace: amcart
+spec:
+  # type: LoadBalancer  # Expose to the public
+  type: ClusterIP  # Changed from LoadBalancer to ClusterIP
+  ports:
+    - port: 80   # External access
+      targetPort: 8080 # Internal container port
+  selector:
+    app: catalog-api

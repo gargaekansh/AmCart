@@ -1,0 +1,44 @@
+# kubectl apply -f identity-api-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-api-deployment
+  namespace: amcart
+  labels:
+    app: identity-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: identity-api
+  template:
+    metadata:
+      labels:
+        app: identity-api
+    spec:
+      containers:
+      - name: identity-api-container
+        image: gargaekansh/amcart.identity.api:1.0.4 # Update image version as needed
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: identity-api-config # Load non-sensitive env vars
+        - secretRef:
+            name: identity-api-secret # Load sensitive env vars
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-api-service
+  namespace: amcart
+spec:
+  # type: ClusterIP # Internal service for API-to-API communication
+  # type: LoadBalancer # ✅ Expose Identity Server
+  type: ClusterIP  # Internal service, no external IP
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: identity-api
