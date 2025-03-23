@@ -77,21 +77,21 @@ stages:
               #context: '$(System.DefaultWorkingDirectory)/src/Services/Catalog.API'
               tags: '$(tag)'
 
-          # - task: Docker@2
-          #   displayName: 'Build and Push Identity API'
-          #   inputs:
-          #     command: buildAndPush
-          #     repository: '$(acrRegistry)/identity-api'
-          #     dockerfile: 'src/Services/Identity.API/Dockerfile'
-          #     tags: '$(tag)'
+          - task: Docker@2
+            displayName: 'Build and Push Identity API'
+            inputs:
+              command: buildAndPush
+              repository: '$(acrRegistry)/amcart.identity.api'
+              dockerfile: 'src/Services/Identity.API/Dockerfile'
+              tags: '$(tag)'
 
-          # - task: Docker@2
-          #   displayName: 'Build and Push ProductSearch API'
-          #   inputs:
-          #     command: buildAndPush
-          #     repository: '$(acrRegistry)/productsearch-api'
-          #     dockerfile: 'src/Services/ProductSearch.API/Dockerfile'
-          #     tags: '$(tag)'
+          - task: Docker@2
+            displayName: 'Build and Push ProductSearch API'
+            inputs:
+              command: buildAndPush
+              repository: '$(acrRegistry)/amcart.productsearch.api'
+              dockerfile: 'src/Services/ProductSearch.API/Dockerfile'
+              tags: '$(tag)'
 
 # -----------------------------------#
 #            DEPLOY STAGE            #
