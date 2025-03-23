@@ -7,6 +7,7 @@ resources:
 variables:
   tag: '$(Build.BuildId)'
   acrRegistry: 'nagp2024amcart0test0acr0.azurecr.io'  # Free Account 'nagp2024amcart0test0acr.azurecr.io'
+  acrName: 'nagp2024amcart0test0acr0'
   azureSubscriptionConnectionString: 'ServiceConnectionAmcart0Test0'  #ServiceConnectionAmcart0Test0
   serviceImageMappings: 'Services/Catalog/Catalog.API=amcart.catalog.api'
   NAMESPACE: amcart
@@ -161,30 +162,46 @@ stages:
 
           # Replace the variables before deploying  
           - script: |
-              echo "Creating a temporary deployment file"
-              cp $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml \
-                $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml
+              # Define variables for service details
+              SERVICE_NAME="catalog"  # Change to identity/productsearch when needed
+              SERVICE_FOLDER="Catalog"  # Folder name under DeploymentScripts/AKS
+              SERVICE_IMAGE_NAME="amcart.catalog.api"  # Image name in ACR
+
+              # Define the temporary file path explicitly as used in arguments
+              TEMP_FILE="$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/${SERVICE_FOLDER}/${SERVICE_NAME}-api-deployment-temp.yaml"
+              
+              echo "Creating a temporary deployment file for $SERVICE_NAME"
+              cp $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/${SERVICE_FOLDER}/${SERVICE_NAME}-api-deployment.yaml $TEMP_FILE
 
               # Log the variables to ensure they are accessible
               echo "==== Debug: Variable Values ===="
-              echo "ACR_NAME: $(acrRegistry)"
+              echo "ACR_NAME: $(acrName)"
               echo "Build.BuildId: $(Build.BuildId)"
               echo "System.DefaultWorkingDirectory: $(System.DefaultWorkingDirectory)"
+              echo "Temporary File Path: $TEMP_FILE"
+              echo "Service Image Name: $SERVICE_IMAGE_NAME"
               echo "================================="
 
               echo "Replacing variables in the temporary file"
-              sed -i "s|\$(ACR_NAME)|$(acrRegistry)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml
-              sed -i "s|\$(Build.BuildId)|$(Build.BuildId)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml
 
-              echo "==== Final Temporary Deployment File ===="
-              cat $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml
-            displayName: 'Prepare Temporary Deployment File with Debug Info'
+              # Replace variables in the temp file
+              sed -i "s|\$(ACR_NAME)|$(acrName)|g" $TEMP_FILE
+              sed -i "s|\$(SERVICE_IMAGE_NAME)|$SERVICE_IMAGE_NAME|g" $TEMP_FILE
+              sed -i "s|\$(Build.BuildId)|$(Build.BuildId)|g" $TEMP_FILE
+
+              echo "==== Final Temporary Deployment File Path ===="
+              echo "$TEMP_FILE"
+
+              echo "==== Final Temporary Deployment File Content ===="
+              cat $TEMP_FILE
+            displayName: 'Prepare Temporary Deployment File for $(SERVICE_NAME) with Debug Info'
+
 
 
     
 
           - task: Kubernetes@1
-            displayName: 'Deploy Catalog API'
+            displayName: 'Deploy Catalog API to AKS'
             inputs:
               connectionType: '$(connectionType)'  # Using variable here
               azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
@@ -196,7 +213,9 @@ stages:
               # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml'
               # arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml"'
               # arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml" --set image=$(acrRegistry)/amcart.catalog.api:$(tag)'
+              # arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml"'
               arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml"'
+
 
           # # Manually Set Kubernetes Context in the Pipeline
 
@@ -205,11 +224,11 @@ stages:
           #   displayName: 'Set Kubernetes Credentials'
 
 
-          - script: |
-              echo "Checking rollout status for Catalog API..."
-              kubectl rollout status deployment/catalog-api-deployment -n $(NAMESPACE) --timeout=120s
-            displayName: "Verify Catalog API Rollout"
-            failOnStderr: true
+          # - script: |
+          #     echo "Checking rollout status for Catalog API..."
+          #     kubectl rollout status deployment/catalog-api-deployment -n $(NAMESPACE) --timeout=120s
+          #   displayName: "Verify Catalog API Rollout"
+          #   failOnStderr: true
 
           # ---------- Identity API ----------
           # - task: Kubernetes@1
