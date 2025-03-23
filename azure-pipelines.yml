@@ -6,11 +6,11 @@ resources:
 
 variables:
   tag: '$(Build.BuildId)'
-  acrRegistry: 'nagp2024amcart0test0acr.azurecr.io'  #
+  acrRegistry: 'nagp2024amcart0test0acr.azurecr.io'  # Free Account 'nagp2024amcart0test0acr.azurecr.io'
   azureSubscriptionConnectionString: 'ServiceConnectionAmcart0Test0'
   serviceImageMappings: 'Services/Catalog/Catalog.API=amcart.catalog.api'
   NAMESPACE: amcart
-  azureResourceGroup: 'amcart-rg'
+  azureResourceGroup: 'amcart-rg'  # Free Account 'nagp2024mcarttest0_rg'
   kubernetesCluster: 'amcart-aks'
 
 stages:
