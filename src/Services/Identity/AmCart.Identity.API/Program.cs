@@ -22,23 +22,38 @@ using IdentityServer4.EntityFramework.DbContexts;
 var builder = WebApplication.CreateBuilder(args);
 
 // In this system we are using Nginx Ingress, therefore we need to resend the headers into this service
-//#region ReverseProxy - header forwarding
-//builder.Services.Configure<ForwardedHeadersOptions>(options =>
-//{
-//    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+#region ReverseProxy - header forwarding
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
 
-//    // Everything what was configured implicitly, we need to reset.
-//    options.KnownNetworks.Clear();
-//    options.KnownProxies.Clear();
-//});
-//#endregion
+    // Everything what was configured implicitly, we need to reset.
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+#endregion
 
 // 🔹 Ensure correct Role and User ID claims mapping
-builder.Services.Configure<IdentityOptions>(options =>
-{
-    options.ClaimsIdentity.RoleClaimType = ClaimTypes.Role; // Map role claim
-    options.ClaimsIdentity.UserIdClaimType = JwtClaimTypes.Subject; // Map user ID claim
-});
+//builder.Services.Configure<IdentityOptions>(options =>
+//{
+//    options.ClaimsIdentity.RoleClaimType = ClaimTypes.Role; // Map role claim
+//    options.ClaimsIdentity.UserIdClaimType = JwtClaimTypes.Subject; // Map user ID claim
+//});
+
+
+
+
+
+/*********************** Uncomment THis for JwtClaimTypes.Role; ***********************/
+//////builder.Services.Configure<IdentityOptions>(options =>
+//////{
+//////    //options.ClaimsIdentity.RoleClaimType = "role"; // Match the claim in JWT
+//////    options.ClaimsIdentity.RoleClaimType = JwtClaimTypes.Role;
+//////    options.ClaimsIdentity.UserIdClaimType = JwtClaimTypes.Subject;
+//////});
+///
+
+
 
 // 🔹 Enable MVC and Razor Pages
 builder.Services.AddControllersWithViews(); // ✅ Enable MVC Controllers & Views
@@ -70,7 +85,7 @@ var configuration = new ConfigurationBuilder()
 
 // 🔹 Configure Services
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-////builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ICustomTokenService, CustomTokenService>();
 builder.Services.AddTransient<IProfileService, ProfileService>();
 builder.Services.AddTransient<ITokenService, DefaultTokenService>();
 builder.Services.AddTransient<IResourceOwnerPasswordValidator, ResourceOwnerPasswordValidator>();
@@ -145,7 +160,7 @@ builder.Services.AddDbContext<AmCart.Identity.API.Data.PersistedGrantDbContext>(
 // Retrieve Identity Service URL from environment variable or fallback to config file
 var identityServiceUrl = Environment.GetEnvironmentVariable("IDENTITY_SERVER_URL") ??
                           configuration["IdentityIssuer"]
-                         ?? "http://amcart.identity.api:8080"; // ✅ Ensure it has a valid port
+                         ?? "amcart.centralindia.cloudapp.azure.com"; 
 
 
 // 🔹 Configure IdentityServer
@@ -158,7 +173,12 @@ builder.Services.AddIdentityServer(options =>
     options.EmitStaticAudienceClaim = true;
     options.IssuerUri = identityServiceUrl;
 
+    //TODO::Set Base Path in IdentityServer4 
+    //options.IssuerUri = "http://amcart.centralindia.cloudapp.azure.com/identity";
+
+
 })
+
 .AddProfileService<ProfileService>()   // Register custom profile service
 .AddDeveloperSigningCredential()  // 🔒 Use a real certificate in production
 .AddAspNetIdentity<ApplicationUser>()
@@ -248,6 +268,11 @@ builder.Services.AddHealthChecks()
         tags: new[] { "db", "sql", "sqlserver" });
 
 var app = builder.Build();
+
+//TODO::Set Base Path in IdentityServer4 
+
+// 👇 Set base path so all endpoints are prefixed with /identity
+app.UsePathBase("/identity");
 
 // 🔹 Apply Migrations & Seed Database in Development
 if (app.Environment.IsDevelopment())

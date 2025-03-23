@@ -1,0 +1,13 @@
+# kubectl apply -f catalog-api-config.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog-api-config
+  namespace: amcart  # Added namespace
+data:
+  # IDENTITY_SERVER_URL: "http://identity-api-service.amcart.svc.cluster.local:8080"
+  # IDENTITY_SERVER_URL: "http://amcart.centralindia.cloudapp.azure.com/identity"
+  # IDENTITY_SERVER_PUBLIC_URL: "http://amcart.centralindia.cloudapp.azure.com/identity"
+  IDENTITY_SERVER_URL: "https://amcart.centralindia.cloudapp.azure.com"
+  IDENTITY_SERVER_PUBLIC_URL: "https://amcart.centralindia.cloudapp.azure.com"

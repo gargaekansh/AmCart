@@ -202,6 +202,7 @@ using IdentityModel;
 using IdentityServer4.AccessTokenValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -244,7 +245,7 @@ builder.Services.AddHttpContextAccessor();
 // Retrieve Identity Service URL from environment variable or fallback to config file
 var identityServiceUrl = Environment.GetEnvironmentVariable("IDENTITY_SERVER_URL")
                          ?? configuration["IdentityProviderSettings:IdentityServiceUrl"]
-                         ?? "http://amcart.identity.api:8080"; // ✅ Ensure it has a valid port
+                         ?? "amcart.centralindia.cloudapp.azure.com"; // ✅ Ensure it has a valid port
 
 logger.LogInformation($"Resolved IdentityServer URL: {identityServiceUrl}");
 
@@ -269,6 +270,10 @@ if (!Uri.TryCreate(identityServiceUrl, UriKind.Absolute, out _))
     throw new InvalidOperationException($"Invalid IdentityServer URL: {identityServiceUrl}");
 }
 
+
+// Disable automatic claim mapping
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
 // Configure authentication using IdentityServer4 and JWT Bearer tokens
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -277,15 +282,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.Audience = "catalogapi"; // ✅ Matches API resource in IdentityServer
         options.RequireHttpsMetadata = false; // ❗ Only disable in development
         IdentityModelEventSource.ShowPII = true;
+        //options.MapInboundClaims = false;
+
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            RoleClaimType = JwtClaimTypes.Role, // ✅ Map "role" claim
-            NameClaimType = JwtClaimTypes.PreferredUserName, // ✅ Map "preferred_username" claim
+            //RoleClaimType = JwtClaimTypes.Role, // ✅ Map "role" claim
+            RoleClaimType = "role", // ✅ Explicitly map "role" as a role claim
+            //opt.TokenValidationParameters.RoleClaimType = "role";
+            //opt.TokenValidationParameters.NameClaimType = "name";
+            NameClaimType = "name",  //JwtClaimTypes.PreferredUserName, // ✅ Map "preferred_username" claim
             ValidateIssuer = true, // ✅ Ensure token is issued by a trusted source
             ValidateAudience = true, // ✅ Ensure token is meant for this API
             ValidateLifetime = true // ✅ Ensure token has not expired
+
+
         };
+
     });
 
 
@@ -359,6 +372,36 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 
 // Configure authorization policies
+//builder.Services.AddAuthorization(options =>
+//{
+//    try
+//    {
+//        // Role-based policies
+//        options.AddPolicy("CanReadRole", policy => policy.RequireRole("Administrator", "User"));
+//        options.AddPolicy("HasFullAccessRole", policy => policy.RequireRole("Administrator"));
+
+//        // Scope-based policies
+//        options.AddPolicy("CanReadScope", policy => policy.RequireClaim("scope", "catalogapi.read", "catalogapi.fullaccess"));
+//        options.AddPolicy("HasFullAccessScope", policy => policy.RequireClaim("scope", "catalogapi.fullaccess"));
+
+//        // Combined policies (OR logic between scopes and roles)
+//        options.AddPolicy("CanRead", policy => policy.Requirements.Add(new CombinedRequirement(
+//            options.GetPolicy("CanReadScope").Requirements.ToList(),
+//            options.GetPolicy("CanReadRole").Requirements.ToList())));
+
+//        options.AddPolicy("HasFullAccess", policy => policy.Requirements.Add(new CombinedRequirement(
+//            options.GetPolicy("HasFullAccessScope").Requirements.ToList(),
+//            options.GetPolicy("HasFullAccessRole").Requirements.ToList())));
+//        logger.LogInformation("Authorization policies configured.");
+//    }
+//    catch (Exception ex)
+//    {
+//        logger.LogError(ex, "Error configuring authorization.");
+//    }
+//});
+
+// Configure authorization policies
+// Configure authorization policies
 builder.Services.AddAuthorization(options =>
 {
     try
@@ -372,13 +415,20 @@ builder.Services.AddAuthorization(options =>
         options.AddPolicy("HasFullAccessScope", policy => policy.RequireClaim("scope", "catalogapi.fullaccess"));
 
         // Combined policies (OR logic between scopes and roles)
-        options.AddPolicy("CanRead", policy => policy.Requirements.Add(new CombinedRequirement(
-            options.GetPolicy("CanReadScope").Requirements.ToList(),
-            options.GetPolicy("CanReadRole").Requirements.ToList())));
+        options.AddPolicy("CanRead", policy => {
+            var scopeRequirements = options.GetPolicy("CanReadScope").Requirements.OfType<ClaimsAuthorizationRequirement>().SelectMany(c => c.AllowedValues).Select(v => new ScopeRequirement(v)).ToList<IAuthorizationRequirement>();
+            var roleRequirements = options.GetPolicy("CanReadRole").Requirements.OfType<RolesAuthorizationRequirement>().SelectMany(r => r.AllowedRoles).Select(r => new RoleRequirement { Role = r }).ToList<IAuthorizationRequirement>();
 
-        options.AddPolicy("HasFullAccess", policy => policy.Requirements.Add(new CombinedRequirement(
-            options.GetPolicy("HasFullAccessScope").Requirements.ToList(),
-            options.GetPolicy("HasFullAccessRole").Requirements.ToList())));
+            policy.Requirements.Add(new CombinedRequirement(scopeRequirements, roleRequirements));
+        });
+
+        options.AddPolicy("HasFullAccess", policy => {
+            var scopeRequirements = options.GetPolicy("HasFullAccessScope").Requirements.OfType<ClaimsAuthorizationRequirement>().SelectMany(c => c.AllowedValues).Select(v => new ScopeRequirement(v)).ToList<IAuthorizationRequirement>();
+            var roleRequirements = options.GetPolicy("HasFullAccessRole").Requirements.OfType<RolesAuthorizationRequirement>().SelectMany(r => r.AllowedRoles).Select(r => new RoleRequirement { Role = r }).ToList<IAuthorizationRequirement>();
+
+            policy.Requirements.Add(new CombinedRequirement(scopeRequirements, roleRequirements));
+        });
+
         logger.LogInformation("Authorization policies configured.");
     }
     catch (Exception ex)

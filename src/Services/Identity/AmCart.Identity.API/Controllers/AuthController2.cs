@@ -25,14 +25,15 @@ using IdentityServer4.Configuration;
 using AmCart.Identity.API.Services;
 using System.Collections.Specialized;
 using System;
-using System.Collections.Specialized; // Add this for NameValueCollection
+using System.Collections.Specialized;
+using AmCart.Identity.API.Services.Interfaces; // Add this for NameValueCollection
 
 namespace AmCart.Identity.API.Controllers
 {
     /// <summary>
     /// Controller for user authentication and registration.
     /// </summary>
-    [Route("api/auth2")]
+    [Route("api/auth")]
     [ApiController]
     public class AuthController2 : ControllerBase
     {
@@ -45,6 +46,7 @@ namespace AmCart.Identity.API.Controllers
         private readonly IEventService _events;
         private readonly JwtSettings _jwtSettings;
         private readonly ITokenService _tokenService;
+        private readonly ICustomTokenService _customTokenService;
 
         /// <summary>
         /// Constructor for AuthController.
@@ -57,7 +59,8 @@ namespace AmCart.Identity.API.Controllers
                               IAuthenticationSchemeProvider schemeProvider,
                               IEventService events,
                               IOptions<JwtSettings> jwtSettings,
-                              ITokenService tokenService)
+                              ITokenService tokenService,
+                              ICustomTokenService customTokenService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -68,6 +71,14 @@ namespace AmCart.Identity.API.Controllers
             _events = events;
             _jwtSettings = jwtSettings.Value; // Access the settings from IOptions
             _tokenService = tokenService;
+            _customTokenService = customTokenService; ;
+        }
+
+        [AllowAnonymous]
+        [HttpGet("test")]
+        public ActionResult<string> TestEndpoint()
+        {
+            return "Test endpoint is working";
         }
 
 
@@ -122,24 +133,61 @@ namespace AmCart.Identity.API.Controllers
         }
 
 
+        ///// <summary>
+        ///// Logs in a user. This method is used for the OAuth2 authorization code flow with IdentityServer4.
+        ///// </summary>
+        //[HttpPost("login")]
+        //[AllowAnonymous]
+        //[Consumes(MediaTypeNames.Application.Json)]
+        //[ProducesResponseType(StatusCodes.Status200OK)]
+        //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+        //public async Task<IActionResult> Login([FromBody] ExtendedLoginRequest model)
+        //{
+        //    if (!ModelState.IsValid)
+        //    {
+        //        return BadRequest(ModelState);
+        //    }
+
+        //    // check if we are in the context of an authorization request
+        //    var context = await _interaction.GetAuthorizationContextAsync(model.ReturnUrl);
+
+        //    var user = await _userManager.FindByEmailAsync(model.Email);
+        //    if (user == null)
+        //    {
+        //        _logger.LogWarning("Login failed. Email '{Email}' not found.", model.Email);
+        //        return Unauthorized("Invalid email or password.");
+        //    }
+
+        //    var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: false);
+        //    if (result.Succeeded)
+        //    {
+        //        return await HandleSuccessfulLogin(user, model.ReturnUrl, model.RememberMe, context);
+        //    }
+        //    else
+        //    {
+        //        _logger.LogWarning("Login failed for '{Email}'. Incorrect credentials.", model.Email);
+        //        return Unauthorized("Invalid email or password.");
+        //    }
+
+        //}
+
+
+
         /// <summary>
-        /// Logs in a user.
+        /// Logs in a user and returns a JWT token. This method is used for custom authentication.
         /// </summary>
+        /// <param name="model">User login request model.</param>
+        /// <returns>A 200 OK response with a JWT token, or a 401 Unauthorized if login fails.</returns>
         [HttpPost("login")]
         [AllowAnonymous]
         [Consumes(MediaTypeNames.Application.Json)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status401Unauthorized)] // Corrected status code
         public async Task<IActionResult> Login([FromBody] ExtendedLoginRequest model)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
-
-            // check if we are in the context of an authorization request
-            var context = await _interaction.GetAuthorizationContextAsync(model.ReturnUrl);
 
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
@@ -149,29 +197,67 @@ namespace AmCart.Identity.API.Controllers
             }
 
             var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: false);
-            if (result.Succeeded)
-            {
-                return await HandleSuccessfulLogin(user, model.ReturnUrl, model.RememberMe, context);
-            }
-            else
+            if (!result.Succeeded)
             {
                 _logger.LogWarning("Login failed for '{Email}'. Incorrect credentials.", model.Email);
                 return Unauthorized("Invalid email or password.");
             }
 
+            var claims = new List<Claim>();
+            var roles = await _userManager.GetRolesAsync(user);
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
+            var token = _customTokenService.GenerateJwtToken(user, model.RememberMe, claims); // Include claims here
+
+            _logger.LogInformation("User '{Email}' logged in successfully.", model.Email);
+            return Ok(new { Token = token });
         }
 
 
-        // Example GetUser action (for CreatedAtAction)
-        [HttpGet("user/{email}", Name = "GetUserProfile")] // Named route for CreatedAtAction
+        /// <summary>
+        /// Retrieves the profile of a user by email.
+        /// </summary>
+        [HttpGet("user/{email}", Name = "GetUserProfile")]
+        [Authorize] // Requires authentication
         public async Task<IActionResult> GetUserProfile(string email)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new { error = "Email is required" });
+            }
+
+            var user = await _userManager.FindByEmailAsync(email.ToLowerInvariant());
             if (user == null)
             {
-                return NotFound();
+                return NotFound(new { error = "User not found" });
             }
-            return Ok(new { user.Id, user.Email, user.Gender, user.MobileNumber });
+
+            return Ok(new UserProfileDto(user));
+        }
+
+        /// <summary>
+        /// Retrieves the profile of the currently logged-in user.
+        /// </summary>
+        [HttpGet("profile")]
+        [Authorize] // Requires authentication
+        public async Task<IActionResult> GetProfile()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(ApiResponse.FailureResponse("Unauthorized", "Invalid authentication credentials."));
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return NotFound(ApiResponse.FailureResponse("User not found", "The requested user does not exist."));
+            }
+
+            return Ok(ApiResponse.SuccessResponse(new UserProfileDto(user), "User profile retrieved successfully."));
         }
 
 
