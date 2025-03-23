@@ -184,11 +184,11 @@ stages:
               arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml"'
         
 
-          # Manually Set Kubernetes Context in the Pipeline
+          # # Manually Set Kubernetes Context in the Pipeline
 
-          - script: |
-              az aks get-credentials --resource-group $(azureResourceGroup) --name $(kubernetesCluster) --overwrite-existing
-            displayName: 'Set Kubernetes Credentials'
+          # - script: |
+          #     az aks get-credentials --resource-group $(azureResourceGroup) --name $(kubernetesCluster) --overwrite-existing
+          #   displayName: 'Set Kubernetes Credentials'
 
 
           - script: |
