@@ -12,6 +12,7 @@ variables:
   NAMESPACE: amcart
   azureResourceGroup: 'nagp2024amcart0test0'  # Free Account 'nagp2024mcarttest0_rg'
   kubernetesCluster: 'nagp2024amcart0test0akstest0'  # Free Account 'nagp2024amcart0test0akstest0'
+  connectionType: 'Azure Resource Manager'
 
 stages:
 
@@ -76,14 +77,16 @@ stages:
     jobs:
       - job: DeployJob
         displayName: 'Deploy All Services to AKS'
-        pool: SelfHosted
+        # pool: SelfHosted
+        pool:
+         vmImage: ubuntu-latest
         steps:
 
           # ---------- Catalog API ----------
           - task: Kubernetes@1
             displayName: 'Apply Catalog ConfigMap'
             inputs:
-              connectionType: 'AzureResourceManager'
+              connectionType: '$(connectionType)'
               azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
               azureResourceGroup: '$(azureResourceGroup)'
               kubernetesCluster: '$(kubernetesCluster)'
@@ -134,7 +137,7 @@ stages:
           - task: Kubernetes@1
             displayName: 'Apply Identity Secret'
             inputs:
-              connectionType: 'AzureResourceManager'
+              connectionType: 'Azure Resource Manager'
               azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
               azureResourceGroup: '$(azureResourceGroup)'
               kubernetesCluster: '$(kubernetesCluster)'
@@ -171,27 +174,27 @@ stages:
               configurationType: 'manifest'
               configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-configmap.yaml'
 
-          - task: Kubernetes@1
-            displayName: 'Apply ProductSearch Secret'
-            inputs:
-              connectionType: 'AzureResourceManager'
-              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-              azureResourceGroup: '$(azureResourceGroup)'
-              kubernetesCluster: '$(kubernetesCluster)'
-              command: 'apply'
-              configurationType: 'manifest'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-secret.yaml'
+          # - task: Kubernetes@1
+          #   displayName: 'Apply ProductSearch Secret'
+          #   inputs:
+          #     connectionType: 'AzureResourceManager'
+          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+          #     azureResourceGroup: '$(azureResourceGroup)'
+          #     kubernetesCluster: '$(kubernetesCluster)'
+          #     command: 'apply'
+          #     configurationType: 'manifest'
+          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-secret.yaml'
 
-          - task: Kubernetes@1
-            displayName: 'Deploy ProductSearch API'
-            inputs:
-              connectionType: 'AzureResourceManager'
-              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-              azureResourceGroup: '$(azureResourceGroup)'
-              kubernetesCluster: '$(kubernetesCluster)'
-              command: 'apply'
-              configurationType: 'manifest'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-deployment.yaml'
+          # - task: Kubernetes@1
+          #   displayName: 'Deploy ProductSearch API'
+          #   inputs:
+          #     connectionType: 'AzureResourceManager'
+          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+          #     azureResourceGroup: '$(azureResourceGroup)'
+          #     kubernetesCluster: '$(kubernetesCluster)'
+          #     command: 'apply'
+          #     configurationType: 'manifest'
+          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-deployment.yaml'
 
           - script: |
               echo "Checking rollout status for ProductSearch API..."
