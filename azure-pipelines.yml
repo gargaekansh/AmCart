@@ -120,18 +120,6 @@ stages:
               command: 'apply'
               configurationType: 'configuration'
               arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/namespace.yaml"'
-              # arguments: '-f - <<EOF apiVersion: v1 kind: Namespace metadata: name: $(NAMESPACE) EOF'
-              # configurationType: 'inline'
-              # configuration: |
-              #   apiVersion: v1
-              #   kind: Namespace
-              #   metadata:
-              #     name: $(NAMESPACE)
-              # configuration: |
-              #   apiVersion: v1
-              #   kind: Namespace
-              #   metadata:
-              #     name: $(NAMESPACE) # Using the NAMESPACE variable
 
           # ---------- Catalog API ----------
           - task: Kubernetes@1
