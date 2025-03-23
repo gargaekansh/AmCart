@@ -3,6 +3,7 @@ using IdentityServer4;
 using IdentityServer4.Models;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
+using System.Security.Claims;
 
 namespace AmCart.Identity.API.Configuration
 {
@@ -16,7 +17,15 @@ namespace AmCart.Identity.API.Configuration
                 new IdentityResources.OpenId(),
                 new IdentityResources.Profile(), // givenName, familyName claims will be returned
                 new IdentityResources.Address(),
+                new IdentityResources.Email(),           // ✅ Adds email scope
                 new IdentityResource() { Name = "roles", DisplayName = "Roles", Description = "User roles", UserClaims = new[] { "role" } }
+        //        new IdentityResource
+        //{
+        //    Name = "roles",
+        //    DisplayName = "Roles",
+        //    Description = "User roles",
+        //        UserClaims = { "role", ClaimTypes.Role, JwtClaimTypes.Role } // ✅ Include all role claim types
+        //}
             };
 
         // This will set 'aud' value in access token which is used for authentication on API
@@ -26,8 +35,9 @@ namespace AmCart.Identity.API.Configuration
                 new ApiResource("catalogapi", "Catalog API")
                 {
                     Scopes = { "catalogapi.read", "catalogapi.fullaccess" },
-                    //UserClaims = new List<string> { "role" },
-                       UserClaims = { JwtClaimTypes.Role, JwtClaimTypes.PreferredUserName } // ✅ Ensure name claim is requested
+                    UserClaims = new List<string> { "role" },
+                    //   UserClaims = { JwtClaimTypes.Role, JwtClaimTypes.PreferredUserName } // ✅ Ensure name claim is requested
+                       ///UserClaims = { "role" } // Important!
                 },
                 new ApiResource("discountapi", "Discount API")
                 {
@@ -305,7 +315,7 @@ namespace AmCart.Identity.API.Configuration
                 "roles",
                 "shoppinggateway.fullaccess",
                 "shoppingaggregator.fullaccess",
-                "catalogapi.fullaccess"  //I have added 
+                "catalogapi.read"  //I have added 
             },
             AllowedCorsOrigins = { $"{angularClientUri}" }, // CORS allowed origins for Angular client
             RequireClientSecret = false, // No client secret required for Angular client
@@ -328,7 +338,8 @@ namespace AmCart.Identity.API.Configuration
                 IdentityServerConstants.StandardScopes.Profile,
                 IdentityServerConstants.StandardScopes.OfflineAccess,
                 "email",
-                "catalogapi.fullaccess"
+                "roles",
+                "catalogapi.read"
             },
             AccessTokenLifetime = 3600, // ⏳ 1 hour access token
             RefreshTokenUsage = TokenUsage.ReUse, // ✅ Allows using the same refresh token
@@ -336,7 +347,8 @@ namespace AmCart.Identity.API.Configuration
             AbsoluteRefreshTokenLifetime = jwtSettings.RememberMeTokenExpirationDays * 86400, // Convert days to seconds
             SlidingRefreshTokenLifetime = jwtSettings.TokenExpirationHours * 3600, // Convert hours to seconds
             AllowedCorsOrigins = { $"{angularClientUri}" },
-            RequireConsent = false
+            RequireConsent = false,
+            AlwaysIncludeUserClaimsInIdToken = true, // 🔹 Ensure claims are included
         },
 
         // Swagger UI clients for various APIs (catalog, basket, order, etc.)
@@ -483,12 +495,15 @@ namespace AmCart.Identity.API.Configuration
             ClientName = "Node Client",
             AllowedGrantTypes = GrantTypes.ResourceOwnerPassword, // ✅ Ensure ROPC is enabled
             ClientSecrets = { new Secret("NodeClientSecret".Sha256()) }, // ✅ Ensure secret is hashed
-            AllowedScopes = { "openid", "profile", "roles", "offline_access", "shoppinggateway.fullaccess", "catalogapi.fullaccess" },
+            //AllowedScopes = { "openid", "profile", "roles", "offline_access", "shoppinggateway.fullaccess", "catalogapi.fullaccess" },
+            AllowedScopes = { "openid", "profile", "roles", "offline_access", "shoppinggateway.fullaccess", "catalogapi.read" },
+
             AllowOfflineAccess = true, // ✅ Enable refresh tokens (important for remember_me)
             RequireClientSecret = true, // ✅ Required if using client secret
             RefreshTokenExpiration = TokenExpiration.Sliding,
             AbsoluteRefreshTokenLifetime = jwtSettings.RememberMeTokenExpirationDays * 86400, // Convert days to seconds
             SlidingRefreshTokenLifetime = jwtSettings.TokenExpirationHours * 3600, // Convert hours to seconds
+            AlwaysIncludeUserClaimsInIdToken = true,
         }
             };
         }

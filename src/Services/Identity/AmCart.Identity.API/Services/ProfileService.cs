@@ -65,6 +65,8 @@ namespace AmCart.Identity.API.Services
                 // Fetch user roles and add them as claims
                 var roles = await _userManager.GetRolesAsync(user);
 
+                context.IssuedClaims.AddRange(roles.Select(role => new Claim(JwtClaimTypes.Role, role)));
+
                 foreach (var role in roles)
                 {
                     claims.Add(new Claim(ClaimTypes.Role, role)); // Standard ASP.NET Role claim

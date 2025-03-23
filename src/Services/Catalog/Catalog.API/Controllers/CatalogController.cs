@@ -59,10 +59,21 @@ namespace Catalog.API.Controllers
             return Ok(products);
         }
 
+        [HttpGet("all")] // api/products/all
+        [ProducesResponseType(typeof(IEnumerable<Product>), (int)HttpStatusCode.OK)]
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<Product>>> GetAllProducts()
+        {
+            var products = await _repository.GetProducts();
+            return Ok(products);
+        }
+
         [HttpGet("{id}", Name = "GetProduct")]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [ProducesResponseType(typeof(Product), (int)HttpStatusCode.OK)]
         [AllowAnonymous]
+        //[Authorize(Policy = "HasFullAccess")]
+        //[Authorize(Policy = "CanRead")]
         public async Task<ActionResult<Product>> GetProductById(string id)
         {
             if (!int.TryParse(id, out int productId))

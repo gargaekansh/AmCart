@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: productsearch-api-deployment
+  namespace: amcart
+  labels:
+    app: productsearch-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: productsearch-api
+  template:
+    metadata:
+      labels:
+        app: productsearch-api
+    spec:
+      containers:
+      - name: productsearch-api-container
+        # image: gargaekansh/amcart.productsearch.api:1.0.1 # Docker Hub image for ProductSearch API
+        image: $(ACR_NAME).azurecr.io/amcart.productsearch.api:$(Build.BuildId) # Docker Hub image for ProductSearch API
+        ports:
+        - containerPort: 8080 # Ensure this matches your application’s listening port
+        env: # Define environment variables directly
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        # - name: IDENTITY_SERVER_URL
+        #   value: "http://amcart.identity.api:8080"
+        - name: COSMOSDB_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: productsearch-api-env  # Reference the secret
+              key: COSMOSDB_CONNECTION_STRING # The key in the secret
+        envFrom: # Load environment variables from the secret
+        - secretRef:
+            name: productsearch-api-env # Name of the secret  
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: productsearch-api-service
+  namespace: amcart
+spec:
+  # type: LoadBalancer # Kubernetes will expose the service with an external IP from the Ingress controller
+  type: ClusterIP  # Changed from LoadBalancer to ClusterIP
+  ports:
+    - port: 8002 # External port
+      targetPort: 8080 # Internal container port
+  selector:
+    app: productsearch-api # Selects pods with this label

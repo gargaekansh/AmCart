@@ -1,0 +1,26 @@
+# kubectl apply -f identity-api-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: identity-api-config
+  namespace: amcart
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+  # IDENTITY_SERVER_URL: "http://identity-api-service.amcart.svc.cluster.local:8080"
+  # IDENTITY_SERVER_URL: "http://amcart.centralindia.cloudapp.azure.com/identity"
+  IDENTITY_SERVER_URL: "https://amcart.centralindia.cloudapp.azure.com"
+
+  # API URLs (Internal & Public)
+  ApiUrls__CatalogInternal: "http://catalog-api-service.amcart.svc.cluster.local:8080"
+  ApiUrls__CatalogPublic: "https://amcart.centralindia.cloudapp.azure.com/catalog" #"http://localhost:8000" #catalogApiPublicUrl = "https://amcart.centralindia.cloudapp.azure.com/catalog";
+  ApiUrls__Catalog: "http://localhost:8000"
+  ApiUrls__Basket: "http://basket.api"
+  ApiUrls__Order: "http://order.api"
+  ApiUrls__Payment: "http://payment.api"
+  ApiUrls__Delivery: "http://delivery.api"
+  ApiUrls__ShoppingAggregator: "http://shopping.api"
+
+  # Web Client URLs
+  WebClientUrls__Razor: "https://localhost:4999"
+  WebClientUrls__Angular: "http://localhost:4200"
+  WebClientUrls__Node: "http://localhost:3000"

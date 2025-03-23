@@ -69,42 +69,42 @@ namespace AmCart.ProductSearch.API.Repositories
         /// </summary>
         /// <param name="query">The search term.</param>
         /// <returns>A standardized search response containing matching products.</returns>
+        /// 
+        /// <summary>
+        /// Performs a smart search in CosmosDB, detecting whether the query is a category or a general search term.
+        /// </summary>
+        /// <param name="query">The search term.</param>
+        /// <returns>A standardized search response containing matching products.</returns>
         public async Task<ProductSearchResponse<Entities.ProductSearch>> SearchAsync(string query)
         {
             var builder = Builders<Product>.Filter;
 
             try
             {
-                // ✅ Check if the query is an exact match for a category
-                bool isCategory = await _productCollection
-                    .Find(builder.Eq(p => p.Category, query))
-                    .AnyAsync();
+                // ✅ Create a case-insensitive regex for partial matching
+                var regex = new BsonRegularExpression(query, "i");
 
-                List<Product> results;
+                // ✅ Combine category and general search into a single query
+                var combinedFilter = builder.Or(
+                    builder.Regex(p => p.Category, regex),                   // Partial match on category
+                    builder.Regex(p => p.Name, regex),                      // Partial match on name
+                    builder.Regex(p => p.Description, regex)                // Partial match on description
+                );
 
-                if (isCategory)
-                {
-                    _logger.LogInformation("🔍 Detected '{Query}' as a category.", query);
-                    results = await _productCollection
-                        .Find(builder.Eq(p => p.Category, query))
-                        .Limit(50)
-                        .ToListAsync();
-                }
-                else
-                {
-                    _logger.LogInformation("🔍 Performing regex-based search for '{Query}'.", query);
-                    var regexFilter = builder.Or(
-                        builder.Regex(p => p.Name, new BsonRegularExpression(query, "i")),
-                        builder.Regex(p => p.Description, new BsonRegularExpression(query, "i"))
-                    );
+                _logger.LogInformation("🔍 Performing smart search for '{Query}'.", query);
 
-                    results = await _productCollection.Find(regexFilter).Limit(50).ToListAsync();
-                }
+                // ✅ Perform the combined query
+                var results = await _productCollection
+                    .Find(combinedFilter)
+                    .Limit(50)
+                    .ToListAsync();
+
+                // ✅ Log result count
+                _logger.LogInformation("✅ Found {Count} results for query '{Query}'.", results.Count, query);
 
                 // ✅ Use AutoMapper to map `Product` to `ProductSearch`
                 var mappedResults = _mapper.Map<List<Entities.ProductSearch>>(results);
 
-                // ✅ Return the standardized response
                 return new ProductSearchResponse<Entities.ProductSearch>
                 {
                     Results = mappedResults,
@@ -117,6 +117,55 @@ namespace AmCart.ProductSearch.API.Repositories
                 throw;
             }
         }
+
+        //public async Task<ProductSearchResponse<Entities.ProductSearch>> SearchAsync(string query)
+        //{
+        //    var builder = Builders<Product>.Filter;
+
+        //    try
+        //    {
+        //        // ✅ Check if the query is an exact match for a category
+        //        bool isCategory = await _productCollection
+        //            .Find(builder.Eq(p => p.Category, query))
+        //            .AnyAsync();
+
+        //        List<Product> results;
+
+        //        if (isCategory)
+        //        {
+        //            _logger.LogInformation("🔍 Detected '{Query}' as a category.", query);
+        //            results = await _productCollection
+        //                .Find(builder.Eq(p => p.Category, query))
+        //                .Limit(50)
+        //                .ToListAsync();
+        //        }
+        //        else
+        //        {
+        //            _logger.LogInformation("🔍 Performing regex-based search for '{Query}'.", query);
+        //            var regexFilter = builder.Or(
+        //                builder.Regex(p => p.Name, new BsonRegularExpression(query, "i")),
+        //                builder.Regex(p => p.Description, new BsonRegularExpression(query, "i"))
+        //            );
+
+        //            results = await _productCollection.Find(regexFilter).Limit(50).ToListAsync();
+        //        }
+
+        //        // ✅ Use AutoMapper to map `Product` to `ProductSearch`
+        //        var mappedResults = _mapper.Map<List<Entities.ProductSearch>>(results);
+
+        //        // ✅ Return the standardized response
+        //        return new ProductSearchResponse<Entities.ProductSearch>
+        //        {
+        //            Results = mappedResults,
+        //            TotalCount = results.Count
+        //        };
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "❌ Error occurred during SmartSearchAsync for query: {Query}", query);
+        //        throw;
+        //    }
+        //}
 
 
 
