@@ -187,7 +187,7 @@ stages:
               # Replace variables in the temp file
               sed -i "s|\$(ACR_NAME)|$(acrName)|g" $TEMP_FILE
               sed -i "s|\$(SERVICE_IMAGE_NAME)|$SERVICE_IMAGE_NAME|g" $TEMP_FILE
-              sed -i "s|\$(Build.BuildId)|$(Build.BuildId)|g" $TEMP_FILE
+              sed -i "s|\$(Build\.BuildId)|$(Build.BuildId)|g" $TEMP_FILE  # Escape the dot in Build.BuildId
 
               echo "==== Final Temporary Deployment File Path ===="
               echo "$TEMP_FILE"
