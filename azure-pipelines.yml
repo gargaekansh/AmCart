@@ -47,7 +47,7 @@ stages:
             displayName: 'Build and Push Catalog API'
             inputs:
               command: buildAndPush
-              repository: '$(acrRegistry)/catalog-api'
+              repository: '$(acrRegistry)/amcart.catalog.api'
               dockerfile: 'src/Services/Catalog.API/Dockerfile'
               tags: '$(tag)'
 
@@ -93,7 +93,7 @@ stages:
               command: 'apply'
               # configurationType: 'manifest'
               configurationType: 'configuration'  # ✅ Correct value
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-configmap.yaml'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-config.yaml'
 
           - task: Kubernetes@1
             displayName: 'Apply Catalog Secret'
@@ -121,7 +121,7 @@ stages:
 
           - script: |
               echo "Checking rollout status for Catalog API..."
-              kubectl rollout status deployment/catalog-api -n $(NAMESPACE) --timeout=120s
+              kubectl rollout status deployment/amcart.catalog.api -n $(NAMESPACE) --timeout=120s
             displayName: "Verify Catalog API Rollout"
             failOnStderr: true
 
