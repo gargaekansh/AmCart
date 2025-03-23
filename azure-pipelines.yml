@@ -237,7 +237,7 @@ stages:
               kubernetesCluster: '$(kubernetesCluster)'
               command: 'apply'
               configurationType: 'configuration'
-              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-configmap.yaml"'
+              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-config.yaml"'
 
           - task: Kubernetes@1
             displayName: 'Apply Identity Secret'
