@@ -237,7 +237,7 @@ stages:
               kubernetesCluster: '$(kubernetesCluster)'
               command: 'apply'
               configurationType: 'configuration'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-configmap.yaml'
+              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-configmap.yaml"'
 
           - task: Kubernetes@1
             displayName: 'Apply Identity Secret'
@@ -249,7 +249,7 @@ stages:
               kubernetesCluster: '$(kubernetesCluster)'
               command: 'apply'
               configurationType: 'configuration'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-secret.yaml'
+              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-secret.yaml"'
 
           - task: Kubernetes@1
             displayName: 'Deploy Identity API to AKS'
@@ -270,16 +270,16 @@ stages:
           #   failOnStderr: true
 
           # ---------- ProductSearch API ----------
-          - task: Kubernetes@1
-            displayName: 'Apply ProductSearch ConfigMap'
-            inputs:
-              connectionType: '$(connectionType)'  # Using variable here
-              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-              azureResourceGroup: '$(azureResourceGroup)'
-              kubernetesCluster: '$(kubernetesCluster)'
-              command: 'apply'
-              configurationType: 'configuration'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-configmap.yaml'
+          # - task: Kubernetes@1
+          #   displayName: 'Apply ProductSearch ConfigMap'
+          #   inputs:
+          #     connectionType: '$(connectionType)'  # Using variable here
+          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+          #     azureResourceGroup: '$(azureResourceGroup)'
+          #     kubernetesCluster: '$(kubernetesCluster)'
+          #     command: 'apply'
+          #     configurationType: 'configuration'
+          #     arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-configmap.yaml'
 
           - task: Kubernetes@1
             displayName: 'Apply ProductSearch Secret'
@@ -290,7 +290,7 @@ stages:
               kubernetesCluster: '$(kubernetesCluster)'
               command: 'apply'
               configurationType: 'configuration'
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-secret.yaml'
+              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-secret.yaml"'
 
           - task: Kubernetes@1
             displayName: 'Deploy ProductSearch API'
