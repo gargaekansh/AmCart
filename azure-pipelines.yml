@@ -46,10 +46,11 @@ stages:
             displayName: "Clean Docker Cache"
 
           # Install Docker
+          # Install Docker
           - task: DockerInstaller@0
             displayName: 'Install Docker'
             inputs:
-              dockerVersion: 'latest'
+              dockerVersion: '17.09.0-ce'
 
           # Login to Azure Container Registry (ACR)
           - task: AzureCLI@2
