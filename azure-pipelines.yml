@@ -161,20 +161,24 @@ stages:
 
           # Replace the variables before deploying  
           - script: |
-              echo "Replacing variables in catalog-api-deployment.yaml"
-              
+              echo "Creating a temporary deployment file"
+              cp $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml \
+                $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml
+
               # Log the variables to ensure they are accessible
+              echo "==== Debug: Variable Values ===="
               echo "ACR_NAME: $(acrRegistry)"
               echo "Build.BuildId: $(Build.BuildId)"
+              echo "System.DefaultWorkingDirectory: $(System.DefaultWorkingDirectory)"
+              echo "================================="
 
-              # Replace variables using correct syntax
-              # sed -i "s|\$(ACR_NAME)|$(acrRegistry)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
-              # sed -i "s|\$(Build.BuildId)|$(Build.BuildId)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
+              echo "Replacing variables in the temporary file"
+              sed -i "s|\$(ACR_NAME)|$(acrRegistry)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml
+              sed -i "s|\$(Build.BuildId)|$(Build.BuildId)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml
 
-              # Show the updated file for verification
-              # echo "Updated Deployment File:"
-              # cat $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
-            displayName: 'Replace Variables in Deployment File'
+              echo "==== Final Temporary Deployment File ===="
+              cat $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml
+            displayName: 'Prepare Temporary Deployment File with Debug Info'
 
 
     
@@ -191,8 +195,8 @@ stages:
               configurationType: 'configuration'  # ✅ Correct value
               # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml'
               # arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml"'
-              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml" --set image=$(acrRegistry)/amcart.catalog.api:$(tag)'
-        
+              # arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml" --set image=$(acrRegistry)/amcart.catalog.api:$(tag)'
+              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment-temp.yaml"'
 
           # # Manually Set Kubernetes Context in the Pipeline
 
