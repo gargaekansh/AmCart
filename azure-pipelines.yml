@@ -168,12 +168,12 @@ stages:
               echo "Build.BuildId: $(Build.BuildId)"
 
               # Replace variables using correct syntax
-              sed -i "s|\$(ACR_NAME)|$(acrRegistry)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
-              sed -i "s|\$(Build.BuildId)|$(Build.BuildId)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
+              # sed -i "s|\$(ACR_NAME)|$(acrRegistry)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
+              # sed -i "s|\$(Build.BuildId)|$(Build.BuildId)|g" $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
 
               # Show the updated file for verification
-              echo "Updated Deployment File:"
-              cat $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
+              # echo "Updated Deployment File:"
+              # cat $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml
             displayName: 'Replace Variables in Deployment File'
 
 
@@ -190,7 +190,8 @@ stages:
               # configurationType: 'manifest'
               configurationType: 'configuration'  # ✅ Correct value
               # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml'
-              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml"'
+              # arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml"'
+              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml" --set image=$(acrRegistry)/amcart.catalog.api:$(tag)'
         
 
           # # Manually Set Kubernetes Context in the Pipeline
