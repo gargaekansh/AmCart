@@ -6,12 +6,12 @@ resources:
 
 variables:
   tag: '$(Build.BuildId)'
-  acrRegistry: 'nagp2024amcart0test0acr.azurecr.io'  # Free Account 'nagp2024amcart0test0acr.azurecr.io'
+  acrRegistry: 'nagp2024amcart0test0acr0.azurecr.io'  # Free Account 'nagp2024amcart0test0acr.azurecr.io'
   azureSubscriptionConnectionString: 'ServiceConnectionAmcart0Test0'
   serviceImageMappings: 'Services/Catalog/Catalog.API=amcart.catalog.api'
   NAMESPACE: amcart
-  azureResourceGroup: 'amcart-rg'  # Free Account 'nagp2024mcarttest0_rg'
-  kubernetesCluster: 'amcart-aks'
+  azureResourceGroup: 'nagp2024amcart0test0'  # Free Account 'nagp2024mcarttest0_rg'
+  kubernetesCluster: 'nagp2024amcart0test0akstest0'  # Free Account 'nagp2024amcart0test0akstest0'
 
 stages:
 
@@ -49,21 +49,21 @@ stages:
               dockerfile: 'src/Services/Catalog.API/Dockerfile'
               tags: '$(tag)'
 
-          - task: Docker@2
-            displayName: 'Build and Push Identity API'
-            inputs:
-              command: buildAndPush
-              repository: '$(acrRegistry)/identity-api'
-              dockerfile: 'src/Services/Identity.API/Dockerfile'
-              tags: '$(tag)'
+          # - task: Docker@2
+          #   displayName: 'Build and Push Identity API'
+          #   inputs:
+          #     command: buildAndPush
+          #     repository: '$(acrRegistry)/identity-api'
+          #     dockerfile: 'src/Services/Identity.API/Dockerfile'
+          #     tags: '$(tag)'
 
-          - task: Docker@2
-            displayName: 'Build and Push ProductSearch API'
-            inputs:
-              command: buildAndPush
-              repository: '$(acrRegistry)/productsearch-api'
-              dockerfile: 'src/Services/ProductSearch.API/Dockerfile'
-              tags: '$(tag)'
+          # - task: Docker@2
+          #   displayName: 'Build and Push ProductSearch API'
+          #   inputs:
+          #     command: buildAndPush
+          #     repository: '$(acrRegistry)/productsearch-api'
+          #     dockerfile: 'src/Services/ProductSearch.API/Dockerfile'
+          #     tags: '$(tag)'
 
 # -----------------------------------#
 #            DEPLOY STAGE            #
