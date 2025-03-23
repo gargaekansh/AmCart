@@ -43,8 +43,8 @@ metadata:
   name: catalog-api-service
   namespace: amcart
 spec:
-  # type: LoadBalancer  # Expose to the public
-  type: ClusterIP  # Changed from LoadBalancer to ClusterIP
+  type: LoadBalancer  # Expose to the public
+  #type: ClusterIP  # Changed from LoadBalancer to ClusterIP
   ports:
     - port: 80   # External access
       targetPort: 8080 # Internal container port
