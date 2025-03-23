@@ -17,7 +17,8 @@ spec:
     spec:
       containers:
       - name: productsearch-api-container
-        image: gargaekansh/amcart.productsearch.api:1.0.1 # Docker Hub image for ProductSearch API
+        # image: gargaekansh/amcart.productsearch.api:1.0.1 # Docker Hub image for ProductSearch API
+        image: $(ACR_NAME).azurecr.io/amcart.productsearch.api:$(Build.BuildId) # Docker Hub image for ProductSearch API
         ports:
         - containerPort: 8080 # Ensure this matches your application’s listening port
         env: # Define environment variables directly

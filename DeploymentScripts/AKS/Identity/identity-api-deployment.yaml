@@ -19,7 +19,8 @@ spec:
     spec:
       containers:
       - name: identity-api-container
-        image: gargaekansh/amcart.identity.api:1.0.4 # Update image version as needed
+        # image: gargaekansh/amcart.identity.api:1.0.4 # Update image version as needed
+        image: $(ACR_NAME).azurecr.io/amcart.identity.api:$(Build.BuildId) # Update image version as needed
         ports:
         - containerPort: 8080
         envFrom:
