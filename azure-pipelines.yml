@@ -121,6 +121,53 @@ stages:
               configurationType: 'configuration'
               arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/namespace.yaml"'
 
+
+               # ---------- Replace the variables before deploying  ----------
+          - script: |
+              # Define variables for service details
+              for SERVICE in "catalog" "identity" "productsearch"
+              do
+                if [ "$SERVICE" == "catalog" ]; then
+                  SERVICE_FOLDER="Catalog"
+                  SERVICE_IMAGE_NAME="amcart.catalog.api"
+                elif [ "$SERVICE" == "identity" ]; then
+                  SERVICE_FOLDER="Identity"
+                  SERVICE_IMAGE_NAME="amcart.identity.api"
+                else
+                  SERVICE_FOLDER="ProductSearch"
+                  SERVICE_IMAGE_NAME="amcart.productsearch.api"
+                fi
+
+                # Define the temporary file path explicitly as used in arguments
+                TEMP_FILE="$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/${SERVICE_FOLDER}/${SERVICE}-api-deployment-temp.yaml"
+                
+                echo "Creating a temporary deployment file for $SERVICE"
+                cp $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/${SERVICE_FOLDER}/${SERVICE}-api-deployment.yaml $TEMP_FILE
+
+                # Log the variables to ensure they are accessible
+                echo "==== Debug: Variable Values for $SERVICE ===="
+                echo "ACR_NAME: $(acrName)"
+                echo "Build.BuildId: $(Build.BuildId)"
+                echo "System.DefaultWorkingDirectory: $(System.DefaultWorkingDirectory)"
+                echo "Temporary File Path: $TEMP_FILE"
+                echo "Service Image Name: $SERVICE_IMAGE_NAME"
+                echo "================================="
+
+                echo "Replacing variables in the temporary file"
+
+                # Replace variables in the temp file
+                sed -i "s|\$(ACR_NAME)|$(acrName)|g" $TEMP_FILE
+                sed -i "s|\$(SERVICE_IMAGE_NAME)|$SERVICE_IMAGE_NAME|g" $TEMP_FILE
+                sed -i "s|\$(Build\.BuildId)|$(Build.BuildId)|g" $TEMP_FILE  # Escape the dot in Build.BuildId
+
+                echo "==== Final Temporary Deployment File Path ===="
+                echo "$TEMP_FILE"
+
+                echo "==== Final Temporary Deployment File Content ===="
+                cat $TEMP_FILE
+              done
+            displayName: 'Prepare Temporary Deployment Files with Debug Info'
+
           # ---------- Catalog API ----------
           - task: Kubernetes@1
             displayName: 'Apply Catalog ConfigMap'
@@ -148,45 +195,7 @@ stages:
               # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml'
               arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml"'
 
-          # Replace the variables before deploying  
-          - script: |
-              # Define variables for service details
-              SERVICE_NAME="catalog"  # Change to identity/productsearch when needed
-              SERVICE_FOLDER="Catalog"  # Folder name under DeploymentScripts/AKS
-              SERVICE_IMAGE_NAME="amcart.catalog.api"  # Image name in ACR
 
-              # Define the temporary file path explicitly as used in arguments
-              TEMP_FILE="$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/${SERVICE_FOLDER}/${SERVICE_NAME}-api-deployment-temp.yaml"
-              
-              echo "Creating a temporary deployment file for $SERVICE_NAME"
-              cp $(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/${SERVICE_FOLDER}/${SERVICE_NAME}-api-deployment.yaml $TEMP_FILE
-
-              # Log the variables to ensure they are accessible
-              echo "==== Debug: Variable Values ===="
-              echo "ACR_NAME: $(acrName)"
-              echo "Build.BuildId: $(Build.BuildId)"
-              echo "System.DefaultWorkingDirectory: $(System.DefaultWorkingDirectory)"
-              echo "Temporary File Path: $TEMP_FILE"
-              echo "Service Image Name: $SERVICE_IMAGE_NAME"
-              echo "================================="
-
-              echo "Replacing variables in the temporary file"
-
-              # Replace variables in the temp file
-              sed -i "s|\$(ACR_NAME)|$(acrName)|g" $TEMP_FILE
-              sed -i "s|\$(SERVICE_IMAGE_NAME)|$SERVICE_IMAGE_NAME|g" $TEMP_FILE
-              sed -i "s|\$(Build\.BuildId)|$(Build.BuildId)|g" $TEMP_FILE  # Escape the dot in Build.BuildId
-
-              echo "==== Final Temporary Deployment File Path ===="
-              echo "$TEMP_FILE"
-
-              echo "==== Final Temporary Deployment File Content ===="
-              cat $TEMP_FILE
-            displayName: 'Prepare Temporary Deployment File for $(SERVICE_NAME) with Debug Info'
-
-
-
-    
 
           - task: Kubernetes@1
             displayName: 'Deploy Catalog API to AKS'
@@ -219,39 +228,39 @@ stages:
           #   failOnStderr: true
 
           # ---------- Identity API ----------
-          # - task: Kubernetes@1
-          #   displayName: 'Apply Identity ConfigMap'
-          #   inputs:
-          #     connectionType: '$(connectionType)'  # Using variable here
-          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-          #     azureResourceGroup: '$(azureResourceGroup)'
-          #     kubernetesCluster: '$(kubernetesCluster)'
-          #     command: 'apply'
-          #     configurationType: 'manifest'
-          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-configmap.yaml'
+          - task: Kubernetes@1
+            displayName: 'Apply Identity ConfigMap'
+            inputs:
+              connectionType: '$(connectionType)'  # Using variable here
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'configuration'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-configmap.yaml'
 
-          # - task: Kubernetes@1
-          #   displayName: 'Apply Identity Secret'
-          #   inputs:
-          #     # connectionType: 'Azure Resource Manager'
-          #     connectionType: '$(connectionType)'  # Using variable here
-          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-          #     azureResourceGroup: '$(azureResourceGroup)'
-          #     kubernetesCluster: '$(kubernetesCluster)'
-          #     command: 'apply'
-          #     configurationType: 'manifest'
-          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-secret.yaml'
+          - task: Kubernetes@1
+            displayName: 'Apply Identity Secret'
+            inputs:
+              # connectionType: 'Azure Resource Manager'
+              connectionType: '$(connectionType)'  # Using variable here
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'configuration'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-secret.yaml'
 
-          # - task: Kubernetes@1
-          #   displayName: 'Deploy Identity API'
-          #   inputs:
-          #     connectionType: '$(connectionType)'  # Using variable here
-          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-          #     azureResourceGroup: '$(azureResourceGroup)'
-          #     kubernetesCluster: '$(kubernetesCluster)'
-          #     command: 'apply'
-          #     configurationType: 'manifest'
-          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-deployment.yaml'
+          - task: Kubernetes@1
+            displayName: 'Deploy Identity API'
+            inputs:
+              connectionType: '$(connectionType)'  # Using variable here
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'configuration'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-deployment.yaml'
 
           # - script: |
           #     echo "Checking rollout status for Identity API..."
@@ -260,38 +269,38 @@ stages:
           #   failOnStderr: true
 
           # ---------- ProductSearch API ----------
-          # - task: Kubernetes@1
-          #   displayName: 'Apply ProductSearch ConfigMap'
-          #   inputs:
-          #     connectionType: '$(connectionType)'  # Using variable here
-          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-          #     azureResourceGroup: '$(azureResourceGroup)'
-          #     kubernetesCluster: '$(kubernetesCluster)'
-          #     command: 'apply'
-          #     configurationType: 'manifest'
-          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-configmap.yaml'
+          - task: Kubernetes@1
+            displayName: 'Apply ProductSearch ConfigMap'
+            inputs:
+              connectionType: '$(connectionType)'  # Using variable here
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'configuration'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-configmap.yaml'
 
-          # - task: Kubernetes@1
-          #   displayName: 'Apply ProductSearch Secret'
-          #   inputs:
-          #     connectionType: '$(connectionType)'  # Using variable here
-          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-          #     azureResourceGroup: '$(azureResourceGroup)'
-          #     kubernetesCluster: '$(kubernetesCluster)'
-          #     command: 'apply'
-          #     configurationType: 'manifest'
-          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-secret.yaml'
+          - task: Kubernetes@1
+            displayName: 'Apply ProductSearch Secret'
+            inputs:
+              connectionType: '$(connectionType)'  # Using variable here
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'configuration'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-secret.yaml'
 
-          # - task: Kubernetes@1
-          #   displayName: 'Deploy ProductSearch API'
-          #   inputs:
-          #     connectionType: '$(connectionType)'  # Using variable here
-          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-          #     azureResourceGroup: '$(azureResourceGroup)'
-          #     kubernetesCluster: '$(kubernetesCluster)'
-          #     command: 'apply'
-          #     configurationType: 'manifest'
-          #     configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-deployment.yaml'
+          - task: Kubernetes@1
+            displayName: 'Deploy ProductSearch API'
+            inputs:
+              connectionType: '$(connectionType)'  # Using variable here
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'configuration'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-deployment.yaml'
 
           # - script: |
           #     echo "Checking rollout status for ProductSearch API..."
