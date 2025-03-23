@@ -122,7 +122,7 @@ stages:
               arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/namespace.yaml"'
 
 
-               # ---------- Replace the variables before deploying  ----------
+               # ---------- Replace the variables and create Temp files before deploying  ----------
           - script: |
               # Define variables for service details
               for SERVICE in "catalog" "identity" "productsearch"
@@ -309,3 +309,29 @@ stages:
           #     kubectl rollout status deployment/productsearch-api -n $(NAMESPACE) --timeout=120s
           #   displayName: "Verify ProductSearch API Rollout"
           #   failOnStderr: true
+
+           # ---------- Cleanup created Temp files  ----------
+
+
+          - script: |
+              # Define an array of service folders
+              SERVICES=("Catalog" "Identity" "ProductSearch")
+
+              echo "==== Starting Cleanup of Temporary Deployment Files ===="
+
+              for SERVICE in "${SERVICES[@]}"
+              do
+                # Define the temp file path
+                TEMP_FILE="$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/${SERVICE,,}/${SERVICE,,}-api-deployment-temp.yaml"
+                
+                # Check if the file exists before attempting to delete
+                if [ -f "$TEMP_FILE" ]; then
+                  echo "Removing temporary file: $TEMP_FILE"
+                  rm -f "$TEMP_FILE"
+                else
+                  echo "No temporary file found for $SERVICE service."
+                fi
+              done
+
+              echo "==== Cleanup Completed ===="
+            displayName: "Cleanup Temporary Deployment Files"
