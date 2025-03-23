@@ -109,20 +109,21 @@ stages:
           
             # Create Namespace
 
-          # - task: Kubernetes@1
-          #   displayName: 'Create Namespace'
-          #   inputs:
-          #     connectionType: '$(connectionType)'
-          #     azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
-          #     azureResourceGroup: '$(azureResourceGroup)'
-          #     kubernetesCluster: '$(kubernetesCluster)'
-          #     command: 'apply'
-          #     configurationType: 'configuration'
-          #     configuration: |
-          #       apiVersion: v1
-          #       kind: Namespace
-          #       metadata:
-          #         name: $(NAMESPACE) # Using the NAMESPACE variable
+          - task: Kubernetes@1
+            displayName: 'Create Namespace'
+            inputs:
+              connectionType: '$(connectionType)'
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'configuration'
+              arguments: '-f - <<EOF apiVersion: v1 kind: Namespace metadata: name: $(NAMESPACE) EOF'
+              # configuration: |
+              #   apiVersion: v1
+              #   kind: Namespace
+              #   metadata:
+              #     name: $(NAMESPACE) # Using the NAMESPACE variable
 
           # ---------- Catalog API ----------
           - task: Kubernetes@1
@@ -148,7 +149,8 @@ stages:
               command: 'apply'
               # configurationType: 'manifest'
               configurationType: 'configuration'  # ✅ Correct value
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml'
+              # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml'
+              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml"'
 
           - task: Kubernetes@1
             displayName: 'Deploy Catalog API'
@@ -160,7 +162,8 @@ stages:
               command: 'apply'
               # configurationType: 'manifest'
               configurationType: 'configuration'  # ✅ Correct value
-              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml'
+              # configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml'
+              arguments: '-f "$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml"'
 
           - script: |
               echo "Checking rollout status for Catalog API..."
