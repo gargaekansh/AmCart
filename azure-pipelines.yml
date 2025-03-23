@@ -1,62 +1,199 @@
 trigger:
-- master
+  - master
 
 resources:
-- repo: self
+  - repo: self
 
 variables:
   tag: '$(Build.BuildId)'
-  acrRegistry: 'nagp2024amcart0test0acr.azurecr.io' # Replace with your ACR name #nagp2024amcart0test0acr.azurecr.io # free acc nagp2024amcart0test0acr.azurecr.io
-  azureSubscriptionConnectionString: 'ServiceConnectionAmcart0Test0' # Replace with your ARM connection name
-  serviceImageMappings: 'Services/Catalog/Catalog.API=amcart.catalog.api' # Corrected path
+  acrRegistry: 'nagp2024amcart0test0acr.azurecr.io'  #
+  azureSubscriptionConnectionString: 'ServiceConnectionAmcart0Test0'
+  serviceImageMappings: 'Services/Catalog/Catalog.API=amcart.catalog.api'
+  NAMESPACE: amcart
+  azureResourceGroup: 'amcart-rg'
+  kubernetesCluster: 'amcart-aks'
 
 stages:
-- stage: Build
-  displayName: Build images
-  jobs:
-  - job: BuildImages
-    displayName: Build Images
-    pool:
-      vmImage: ubuntu-latest
-    steps:
-    - task: DockerInstaller@0
-      displayName: 'Install Docker'
-      inputs:
-        dockerVersion: '17.09.0-ce' # Consider using a newer version
 
-    - task: AzureCLI@2
-      displayName: 'ACR Login'
-      inputs:
-        azureSubscription: '$(azureSubscriptionConnectionString)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: 'az acr login --name $(acrRegistry)'
+# -----------------------------------#
+#            BUILD STAGE             #
+# -----------------------------------#
+  - stage: Build
+    displayName: 'Build and Push Docker Images'
+    jobs:
+      - job: BuildJob
+        displayName: 'Docker Build'
+        pool: SelfHosted
+        steps:
+          # Install Docker
+          - task: DockerInstaller@0
+            displayName: 'Install Docker'
+            inputs:
+              dockerVersion: '17.09.0-ce'
 
-    - script: |
-        set -x # Enable debugging
+          # Login to Azure Container Registry (ACR)
+          - task: AzureCLI@2
+            displayName: 'ACR Login'
+            inputs:
+              azureSubscription: '$(azureSubscriptionConnectionString)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'az acr login --name $(acrRegistry)'
 
-        SERVICE="Services/Catalog/Catalog.API"
-        IMAGE_NAME="amcart.catalog.api"
-        
-        dockerfilePath="src/$SERVICE/Dockerfile"
-        buildContext="src/$SERVICE"
+          # Build and Push Docker Images for All Services
+          - task: Docker@2
+            displayName: 'Build and Push Catalog API'
+            inputs:
+              command: buildAndPush
+              repository: '$(acrRegistry)/catalog-api'
+              dockerfile: 'src/Services/Catalog.API/Dockerfile'
+              tags: '$(tag)'
 
-        # Validate paths
-        if [[ ! -f "$dockerfilePath" ]]; then
-          echo "Error: Dockerfile not found at $dockerfilePath"
-          exit 1
-        fi
-        if [[ ! -d "$buildContext" ]]; then
-          echo "Error: Build context directory not found at $buildContext"
-          exit 1
-        fi
+          - task: Docker@2
+            displayName: 'Build and Push Identity API'
+            inputs:
+              command: buildAndPush
+              repository: '$(acrRegistry)/identity-api'
+              dockerfile: 'src/Services/Identity.API/Dockerfile'
+              tags: '$(tag)'
 
-        # Build and push image
-        IMAGE_TAG="$(acrRegistry)/$IMAGE_NAME:$(tag)"
-        echo "Building image: $IMAGE_TAG"
-        docker build -f "$dockerfilePath" -t "$IMAGE_TAG" "$buildContext"
-        docker push "$IMAGE_TAG"
-      displayName: Build and Push Catalog.API
-      env:
-        ACR_REGISTRY: '$(acrRegistry)'
-        BUILD_TAG: '$(tag)'
+          - task: Docker@2
+            displayName: 'Build and Push ProductSearch API'
+            inputs:
+              command: buildAndPush
+              repository: '$(acrRegistry)/productsearch-api'
+              dockerfile: 'src/Services/ProductSearch.API/Dockerfile'
+              tags: '$(tag)'
+
+# -----------------------------------#
+#            DEPLOY STAGE            #
+# -----------------------------------#
+  - stage: Deploy
+    displayName: 'Deploy to AKS'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - job: DeployJob
+        displayName: 'Deploy All Services to AKS'
+        pool: SelfHosted
+        steps:
+
+          # ---------- Catalog API ----------
+          - task: Kubernetes@1
+            displayName: 'Apply Catalog ConfigMap'
+            inputs:
+              connectionType: 'AzureResourceManager'
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'manifest'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-configmap.yaml'
+
+          - task: Kubernetes@1
+            displayName: 'Apply Catalog Secret'
+            inputs:
+              connectionType: 'AzureResourceManager'
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'manifest'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-secret.yaml'
+
+          - task: Kubernetes@1
+            displayName: 'Deploy Catalog API'
+            inputs:
+              connectionType: 'AzureResourceManager'
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'manifest'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Catalog/catalog-api-deployment.yaml'
+
+          - script: |
+              echo "Checking rollout status for Catalog API..."
+              kubectl rollout status deployment/catalog-api -n $(NAMESPACE) --timeout=120s
+            displayName: "Verify Catalog API Rollout"
+            failOnStderr: true
+
+          # ---------- Identity API ----------
+          - task: Kubernetes@1
+            displayName: 'Apply Identity ConfigMap'
+            inputs:
+              connectionType: 'AzureResourceManager'
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'manifest'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-configmap.yaml'
+
+          - task: Kubernetes@1
+            displayName: 'Apply Identity Secret'
+            inputs:
+              connectionType: 'AzureResourceManager'
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'manifest'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-secret.yaml'
+
+          - task: Kubernetes@1
+            displayName: 'Deploy Identity API'
+            inputs:
+              connectionType: 'AzureResourceManager'
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'manifest'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/Identity/identity-api-deployment.yaml'
+
+          - script: |
+              echo "Checking rollout status for Identity API..."
+              kubectl rollout status deployment/identity-api -n $(NAMESPACE) --timeout=120s
+            displayName: "Verify Identity API Rollout"
+            failOnStderr: true
+
+          # ---------- ProductSearch API ----------
+          - task: Kubernetes@1
+            displayName: 'Apply ProductSearch ConfigMap'
+            inputs:
+              connectionType: 'AzureResourceManager'
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'manifest'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-configmap.yaml'
+
+          - task: Kubernetes@1
+            displayName: 'Apply ProductSearch Secret'
+            inputs:
+              connectionType: 'AzureResourceManager'
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'manifest'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-secret.yaml'
+
+          - task: Kubernetes@1
+            displayName: 'Deploy ProductSearch API'
+            inputs:
+              connectionType: 'AzureResourceManager'
+              azureSubscriptionEndpoint: '$(azureSubscriptionConnectionString)'
+              azureResourceGroup: '$(azureResourceGroup)'
+              kubernetesCluster: '$(kubernetesCluster)'
+              command: 'apply'
+              configurationType: 'manifest'
+              configuration: '$(System.DefaultWorkingDirectory)/DeploymentScripts/AKS/ProductSearch/productsearch-api-deployment.yaml'
+
+          - script: |
+              echo "Checking rollout status for ProductSearch API..."
+              kubectl rollout status deployment/productsearch-api -n $(NAMESPACE) --timeout=120s
+            displayName: "Verify ProductSearch API Rollout"
+            failOnStderr: true
