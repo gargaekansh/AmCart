@@ -42,6 +42,10 @@ namespace Catalog.API.Controllers
             });
         }
 
+        /// <summary>
+        /// Test endpoint to check if the controller is working.
+        /// </summary>
+        /// <returns></returns>
 
         [AllowAnonymous]
         [HttpGet("test")]
